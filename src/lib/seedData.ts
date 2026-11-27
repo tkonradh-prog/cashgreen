@@ -133,7 +133,7 @@ export function createCleanDatabase(todayStr: string): FinanceDB {
         name: 'Gotówka w portfelu',
         kind: 'cash',
         initialBalanceGrosze: 0,
-        color: '#5ad7a4',
+        color: '#d4af37',
         includeInLiquid: true,
       },
       {
@@ -141,7 +141,7 @@ export function createCleanDatabase(todayStr: string): FinanceDB {
         name: 'Konto główne',
         kind: 'bank',
         initialBalanceGrosze: 0,
-        color: '#9ae8c8',
+        color: '#ffffff',
         includeInLiquid: true,
       },
       {
@@ -149,15 +149,18 @@ export function createCleanDatabase(todayStr: string): FinanceDB {
         name: 'Oszczędności',
         kind: 'savings',
         initialBalanceGrosze: 0,
-        color: '#3a9d78',
+        color: '#3b82f6',
         includeInLiquid: false,
       },
     ],
-    categories: DEFAULT_CATEGORIES.map((c) => ({ ...c })),
+    categories: DEFAULT_CATEGORIES.map((c) => ({
+      ...c,
+      monthlyBudgetGrosze: undefined,
+    })),
     transactions: [],
     targets: {
-      monthlyExpenseLimitGrosze: 650000,
-      monthlyIncomeGoalGrosze: 1000000,
+      monthlyExpenseLimitGrosze: 0,
+      monthlyIncomeGoalGrosze: 0,
     },
   };
 }

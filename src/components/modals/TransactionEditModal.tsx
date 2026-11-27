@@ -158,7 +158,7 @@ function TransactionEditForm({
       />
 
       {type === 'transfer' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-2 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-2 items-end">
           <CustomSelect
             label="Z konta"
             value={accountId}

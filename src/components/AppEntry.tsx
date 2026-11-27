@@ -9,7 +9,7 @@ import { ToastProvider } from './ui/ToastProvider';
 
 export function AppEntry({
   initialAuthenticated,
-  initialUsername = 'admin',
+  initialUsername = '',
   initialDb,
   todayStr,
   hadExistingCookies,
@@ -24,12 +24,13 @@ export function AppEntry({
 }) {
   const [authenticated, setAuthenticated] = useState(initialAuthenticated);
   const [username, setUsername] = useState(initialUsername);
+  const [hasSessionChanged, setHasSessionChanged] = useState(false);
 
-  if (!authenticated) {
+  if (!authenticated || !username) {
     return (
       <LoginScreen
         onSuccess={(user) => {
-          setUsername(user || 'admin');
+          setUsername(user);
           setAuthenticated(true);
         }}
       />
@@ -39,6 +40,11 @@ export function AppEntry({
   return (
     <ToastProvider>
       <FinanceProvider
+        key={username}
+        username={username}
+        serverLoadedForUsername={
+          initialAuthenticated && !hasSessionChanged ? initialUsername : ''
+        }
         initialDb={initialDb}
         todayStr={todayStr}
         hadExistingCookies={hadExistingCookies}
@@ -46,7 +52,11 @@ export function AppEntry({
       >
         <FinanceApp
           username={username}
-          onLoggedOut={() => setAuthenticated(false)}
+          onLoggedOut={() => {
+            setHasSessionChanged(true);
+            setAuthenticated(false);
+            setUsername('');
+          }}
         />
       </FinanceProvider>
     </ToastProvider>

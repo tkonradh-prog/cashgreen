@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react';
 import {
   ArrowLeftRight,
   ArrowUpRight,
+  Clock,
   Copy,
   MessageSquarePlus,
   Pencil,
@@ -91,12 +92,21 @@ export function AddTransactionView({
   const [date, setDate] = useState(todayStr);
   const [showNote, setShowNote] = useState(false);
   const [note, setNote] = useState('');
+  const [isPlanned, setIsPlanned] = useState(false);
   const [error, setError] = useState('');
 
   const effectiveAccountId = preselectedAccountId || accountId;
   const resolvedAccountId = accountsSummary.accounts.some((a) => a.id === effectiveAccountId)
     ? effectiveAccountId
     : accountsSummary.accounts[0]?.id ?? '';
+
+  const resolvedCategoryId = useMemo(() => {
+    if (type === 'transfer') return SYSTEM_CATEGORY_TRANSFER;
+    if (db.categories.some((c) => c.id === categoryId && c.type === type)) {
+      return categoryId;
+    }
+    return db.categories.find((c) => c.type === type)?.id ?? '';
+  }, [db.categories, categoryId, type]);
 
   const resolvedToAccountId = useMemo(() => {
     if (
@@ -203,7 +213,7 @@ export function AddTransactionView({
     const fallbackTitle =
       type === 'transfer'
         ? `Przelew: ${sourceAcc?.name ?? ''} → ${destAcc?.name ?? ''}`
-        : db.categories.find((c) => c.id === categoryId)?.name ?? 'Operacja';
+        : db.categories.find((c) => c.id === resolvedCategoryId)?.name ?? 'Operacja';
 
     const created = addTransaction({
       type,
@@ -211,14 +221,16 @@ export function AddTransactionView({
       date,
       accountId: resolvedAccountId,
       toAccountId: type === 'transfer' ? resolvedToAccountId : undefined,
-      categoryId: type === 'transfer' ? SYSTEM_CATEGORY_TRANSFER : categoryId,
+      categoryId: type === 'transfer' ? SYSTEM_CATEGORY_TRANSFER : resolvedCategoryId,
       title: title.trim() || fallbackTitle,
       note: note.trim() || undefined,
+      isPlanned: isPlanned || undefined,
     });
 
     pushToast({
-      message:
-        type === 'expense'
+      message: isPlanned
+        ? 'Zapisano planowaną operację'
+        : type === 'expense'
           ? 'Zapisano wydatek'
           : type === 'income'
             ? 'Zapisano przychód'
@@ -232,6 +244,7 @@ export function AddTransactionView({
     setTitle('');
     setNote('');
     setShowNote(false);
+    setIsPlanned(false);
     setError('');
     onClearPreselectedAccount?.();
   };
@@ -243,6 +256,7 @@ export function AddTransactionView({
     setAccountId(tx.accountId);
     if (tx.toAccountId) setToAccountId(tx.toAccountId);
     if (tx.type !== 'transfer') setCategoryId(tx.categoryId);
+    setIsPlanned(Boolean(tx.isPlanned));
     setDate(todayStr);
     onClearPreselectedAccount?.();
     pushToast({
@@ -281,9 +295,9 @@ export function AddTransactionView({
   );
 
   return (
-    <div className="space-y-5 md:space-y-0 md:grid md:grid-cols-12 md:gap-6 md:items-start">
-      {/* Luxury iOS Frosted Glass Balance Hero (Mobile < md) */}
-      <div className="md:hidden space-y-3.5 animate-card-in">
+    <div className="space-y-5 lg:space-y-0 lg:grid lg:grid-cols-12 lg:gap-6 lg:items-start">
+      {/* Luxury iOS Frosted Glass Balance Hero (Mobile & Tablet < lg) */}
+      <div className="lg:hidden space-y-3.5 animate-card-in">
         <div className="relative overflow-hidden rounded-3xl finte-card-elevated p-5">
           {/* Subtle animated sheen & crystal top reflection */}
           <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full bg-sky-400/[0.08] blur-2xl pointer-events-none" />
@@ -371,8 +385,8 @@ export function AddTransactionView({
       </div>
 
       {/* Main Entry Card */}
-      <section className="md:col-span-7 finte-card p-4 sm:p-7 space-y-5 sm:space-y-6 animate-card-in stagger-1">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <section className="lg:col-span-7 finte-card p-4 sm:p-6 xl:p-7 space-y-5 sm:space-y-6 animate-card-in stagger-1 min-w-0">
+        <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row xl:items-center justify-between gap-3">
           <div>
             <h1 className="text-lg sm:text-xl font-extrabold tracking-tight text-white">Nowa operacja</h1>
             <p className="text-xs text-neutral-400 mt-0.5">
@@ -382,7 +396,7 @@ export function AddTransactionView({
           <SegmentedTabs<TransactionType>
             size="sm"
             fullWidth
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto lg:w-full xl:w-auto"
             value={type}
             onChange={handleTypeChange}
             items={[
@@ -414,35 +428,49 @@ export function AddTransactionView({
           />
 
           {type === 'transfer' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-2.5 items-end">
-              <CustomSelect
-                label="Z konta"
-                value={resolvedAccountId}
-                onChange={(id) => {
-                  onClearPreselectedAccount?.();
-                  setAccountId(id);
-                }}
-                options={accountOptions}
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  onClearPreselectedAccount?.();
-                  setAccountId(resolvedToAccountId);
-                  setToAccountId(resolvedAccountId);
-                }}
-                title="Zamień konta miejscami"
-                className="h-[46px] px-3.5 rounded-2xl bg-[#141822] hover:bg-[#1c2230] border border-[#242c3d] text-white flex items-center justify-center transition-colors cursor-pointer"
-              >
-                <ArrowLeftRight className="w-4 h-4" />
-              </button>
-              <CustomSelect
-                label="Na konto"
-                value={resolvedToAccountId}
-                onChange={setToAccountId}
-                options={accountOptions}
-              />
-            </div>
+            accountsSummary.accounts.length < 2 ? (
+              <div className="rounded-2xl ios-glass-inset p-4 text-xs text-neutral-300 flex items-center justify-between gap-3">
+                <span>Potrzebujesz co najmniej dwóch kont, aby wykonać przelew między nimi.</span>
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('wealth')}
+                  className="shrink-0 px-3 py-1.5 rounded-xl bg-white text-black font-bold cursor-pointer"
+                >
+                  Dodaj konto
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-2.5 items-end">
+                <CustomSelect
+                  label="Z konta"
+                  value={resolvedAccountId}
+                  onChange={(id) => {
+                    onClearPreselectedAccount?.();
+                    setAccountId(id);
+                  }}
+                  options={accountOptions}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClearPreselectedAccount?.();
+                    setAccountId(resolvedToAccountId);
+                    setToAccountId(resolvedAccountId);
+                  }}
+                  title="Zamień konta miejscami"
+                  aria-label="Zamień konta miejscami"
+                  className="h-[46px] px-3.5 rounded-2xl bg-[#141822] hover:bg-[#1c2230] border border-[#242c3d] text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                >
+                  <ArrowLeftRight className="w-4 h-4" />
+                </button>
+                <CustomSelect
+                  label="Na konto"
+                  value={resolvedToAccountId}
+                  onChange={setToAccountId}
+                  options={accountOptions}
+                />
+              </div>
+            )
           ) : (
             <CustomSelect
               label={type === 'expense' ? 'Czym zapłacono?' : 'Na jakie konto?'}
@@ -459,7 +487,7 @@ export function AddTransactionView({
             <CategoryPicker
               categories={db.categories}
               type={type}
-              value={categoryId}
+              value={resolvedCategoryId}
               onChange={setCategoryId}
               onCreateCategory={(cat) => {
                 const created = addCategory(cat);
@@ -507,16 +535,31 @@ export function AddTransactionView({
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
             <CustomDatePicker value={date} todayStr={todayStr} onChange={setDate} />
 
-            {!showNote && (
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => setShowNote(true)}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-400 hover:text-white py-2 cursor-pointer self-start sm:self-auto"
+                onClick={() => setIsPlanned((p) => !p)}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                  isPlanned
+                    ? 'bg-white/95 text-black shadow-[0_2px_10px_rgba(255,255,255,0.2)]'
+                    : 'ios-glass-pill text-neutral-400 hover:text-white'
+                }`}
               >
-                <MessageSquarePlus className="w-3.5 h-3.5" />
-                Dodaj notatkę
+                <Clock className="w-3.5 h-3.5" />
+                {isPlanned ? 'Planowane' : 'Zaplanuj'}
               </button>
-            )}
+
+              {!showNote && (
+                <button
+                  type="button"
+                  onClick={() => setShowNote(true)}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-400 hover:text-white py-2 px-1 whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  <MessageSquarePlus className="w-3.5 h-3.5" />
+                  Dodaj notatkę
+                </button>
+              )}
+            </div>
           </div>
 
           <div
@@ -554,25 +597,30 @@ export function AddTransactionView({
       </section>
 
       {/* Right Column: Desktop Accounts + Recent Activity */}
-      <aside className="md:col-span-5 space-y-6">
+      <aside className="lg:col-span-5 space-y-6 min-w-0">
         {/* Desktop-only Accounts Card */}
-        <div className="hidden md:block finte-card p-6 space-y-4">
+        <div className="hidden lg:block finte-card p-6 space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">
                 Stan kont i gotówki
               </div>
-              <div className="text-3xl font-extrabold tabular-nums text-white mt-1">
+              <div className="text-3xl font-extrabold tabular-nums text-white mt-1 whitespace-nowrap">
                 <AnimatedPLN valueGrosze={accountsSummary.liquidTotalGrosze} />
               </div>
-              <div className="text-xs text-neutral-400 mt-1">
-                Gotówka:{' '}
-                <span className="text-white font-semibold tabular-nums">
-                  {formatPLN(accountsSummary.cashTotalGrosze)}
-                </span>{' '}
-                · Konta:{' '}
-                <span className="text-white font-semibold tabular-nums">
-                  {formatPLN(accountsSummary.bankTotalGrosze)}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-neutral-400 mt-1">
+                <span className="whitespace-nowrap">
+                  Gotówka:{' '}
+                  <span className="text-white font-semibold tabular-nums">
+                    {formatPLN(accountsSummary.cashTotalGrosze)}
+                  </span>
+                </span>
+                <span aria-hidden="true">·</span>
+                <span className="whitespace-nowrap">
+                  Konta:{' '}
+                  <span className="text-white font-semibold tabular-nums">
+                    {formatPLN(accountsSummary.bankTotalGrosze)}
+                  </span>
                 </span>
               </div>
             </div>
@@ -692,7 +740,7 @@ export function AddTransactionView({
                     onClick={() => onEditTransaction(tx)}
                     className="group rounded-2xl px-3.5 py-3 ios-glass-inset hover:bg-white/[0.075] hover:border-white/20 active:scale-[0.99] transition-all flex items-center justify-between gap-2.5 cursor-pointer"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       <span
                         className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-white/10 text-white"
                         style={{
@@ -707,8 +755,8 @@ export function AddTransactionView({
                           <CategoryIcon name={cat?.icon} className="w-3.5 h-3.5" />
                         )}
                       </span>
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold text-white truncate">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-semibold text-white line-clamp-1">
                           {tx.title}
                         </div>
                         <div className="text-[11px] text-neutral-400 truncate">
@@ -720,8 +768,8 @@ export function AddTransactionView({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                      <span className={`text-sm font-bold tabular-nums ${amountColor}`}>
+                    <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                      <span className={`text-sm font-bold tabular-nums whitespace-nowrap ${amountColor}`}>
                         {amountSign}
                         {formatPLN(tx.amountGrosze)}
                       </span>

@@ -1,4 +1,5 @@
 import LZString from 'lz-string';
+import { normalizeLogin } from './auth';
 import {
   Account,
   AccountKind,
@@ -22,6 +23,7 @@ interface CookieMeta {
   v: number;
   c: number;
   t: string;
+  u?: string;
 }
 
 export interface CookiePair {
@@ -266,7 +268,10 @@ function encodeDatabase(db: FinanceDB): { rawJson: string; compressed: string } 
 /**
  * Reconstructs FinanceDB from an array of { name, value } cookie pairs (works on SSR & Client).
  */
-export function parseFinanceDBFromCookies(cookieList: CookiePair[]): FinanceDB | null {
+export function parseFinanceDBFromCookies(
+  cookieList: CookiePair[],
+  expectedUsername?: string
+): FinanceDB | null {
   try {
     const map = new Map<string, string>();
     for (const c of cookieList) {
@@ -279,6 +284,13 @@ export function parseFinanceDBFromCookies(cookieList: CookiePair[]): FinanceDB |
     const meta = JSON.parse(decodeURIComponent(metaRaw)) as CookieMeta;
     if (!meta || meta.v !== CURRENT_DB_VERSION || typeof meta.c !== 'number' || meta.c <= 0 || meta.c > 24) {
       return null;
+    }
+
+    if (expectedUsername !== undefined) {
+      const normalizedExpected = normalizeLogin(expectedUsername);
+      if (!normalizedExpected || normalizeLogin(meta.u ?? '') !== normalizedExpected) {
+        return null;
+      }
     }
 
     let compressed = '';
@@ -318,7 +330,10 @@ export function getBrowserCookies(): CookiePair[] {
  * Serializes and writes FinanceDB into compact chunked browser cookies,
  * keeping total Cookie header size safely below Node's 16 KB HTTP 431 limit.
  */
-export function saveFinanceDBToCookies(db: FinanceDB): CookieStorageStats {
+export function saveFinanceDBToCookies(
+  db: FinanceDB,
+  username?: string
+): CookieStorageStats {
   const { rawJson, compressed } = encodeDatabase(db);
 
   const chunks: string[] = [];
@@ -353,10 +368,12 @@ export function saveFinanceDBToCookies(db: FinanceDB): CookieStorageStats {
       document.cookie = `${COOKIE_CHUNK_PREFIX}${index}=${chunk}; ${attrs}`;
     });
 
+    const normalizedUser = username ? normalizeLogin(username) : undefined;
     const meta: CookieMeta = {
       v: CURRENT_DB_VERSION,
       c: chunks.length,
       t: db.updatedAt,
+      ...(normalizedUser ? { u: normalizedUser } : {}),
     };
     document.cookie = `${COOKIE_META_KEY}=${encodeURIComponent(JSON.stringify(meta))}; ${attrs}`;
   }

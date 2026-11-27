@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronDown, Search, X } from 'lucide-react';
 
@@ -43,10 +43,41 @@ export function CustomSelect<T extends string = string>({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [activeIdx, setActiveIdx] = useState(-1);
+  const [desktopRect, setDesktopRect] = useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+    minWidth: number;
+  }>({ left: 0, minWidth: 200 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const desktopMenuRef = useRef<HTMLDivElement>(null);
   const mobileSheetRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const id = useId();
+
+  const updateDesktopRect = useCallback(() => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect || typeof window === 'undefined') return;
+    const minWidth = Math.max(rect.width, 230);
+    const maxWidth = Math.min(340, window.innerWidth - 24);
+    const width = Math.min(minWidth, maxWidth);
+    const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));
+    const openUpward = rect.bottom + 280 > window.innerHeight && rect.top > 280;
+    if (openUpward) {
+      setDesktopRect({
+        left,
+        bottom: window.innerHeight - rect.top + 6,
+        minWidth: rect.width,
+      });
+    } else {
+      setDesktopRect({
+        left,
+        top: rect.bottom + 6,
+        minWidth: rect.width,
+      });
+    }
+  }, []);
 
   const shouldShowSearch = searchable ?? options.length > 6;
 
@@ -74,11 +105,13 @@ export function CustomSelect<T extends string = string>({
 
   useEffect(() => {
     if (!open) return;
+    updateDesktopRect();
 
     const onPointerDown = (e: MouseEvent | TouchEvent) => {
       const target = e.target as Node;
       if (
         !containerRef.current?.contains(target) &&
+        !desktopMenuRef.current?.contains(target) &&
         !mobileSheetRef.current?.contains(target)
       ) {
         closeMenu();
@@ -87,10 +120,13 @@ export function CustomSelect<T extends string = string>({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeMenu();
     };
+    const onReposition = () => updateDesktopRect();
 
     document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('touchstart', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
+    window.addEventListener('resize', onReposition);
+    window.addEventListener('scroll', onReposition, true);
 
     if (shouldShowSearch) {
       setTimeout(() => searchInputRef.current?.focus(), 20);
@@ -100,8 +136,10 @@ export function CustomSelect<T extends string = string>({
       document.removeEventListener('mousedown', onPointerDown);
       document.removeEventListener('touchstart', onPointerDown);
       document.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('resize', onReposition);
+      window.removeEventListener('scroll', onReposition, true);
     };
-  }, [open, shouldShowSearch]);
+  }, [open, shouldShowSearch, updateDesktopRect]);
 
   const handleTriggerKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
@@ -222,7 +260,7 @@ export function CustomSelect<T extends string = string>({
   );
 
   return (
-    <div ref={containerRef} className={`relative flex flex-col gap-1.5 ${className}`}>
+    <div ref={containerRef} className={`min-w-0 relative flex flex-col gap-1.5 ${className}`}>
       {label && (
         <label
           htmlFor={id}
@@ -234,6 +272,7 @@ export function CustomSelect<T extends string = string>({
       )}
 
       <button
+        ref={triggerRef}
         id={id}
         type="button"
         aria-haspopup="listbox"
@@ -242,6 +281,7 @@ export function CustomSelect<T extends string = string>({
           if (open) closeMenu();
           else {
             setQuery('');
+            updateDesktopRect();
             setOpen(true);
           }
         }}
@@ -290,45 +330,61 @@ export function CustomSelect<T extends string = string>({
         </div>
       </button>
 
-      {/* Desktop floating glass dropdown */}
-      {open && (
+      {/* Desktop floating glass dropdown portaled to body */}
+      {open && typeof document !== 'undefined' && (
         <>
-          <div className="hidden sm:block absolute left-0 right-0 top-[calc(100%+6px)] z-50 rounded-2xl ios-glass-sheet overflow-hidden animate-fade-in">
-            {renderOptionsList()}
-          </div>
+          {createPortal(
+            <div
+              ref={desktopMenuRef}
+              style={{
+                left: `${desktopRect.left}px`,
+                top: desktopRect.top !== undefined ? `${desktopRect.top}px` : undefined,
+                bottom: desktopRect.bottom !== undefined ? `${desktopRect.bottom}px` : undefined,
+                minWidth: `${Math.max(desktopRect.minWidth, 230)}px`,
+                maxWidth: 'min(340px, calc(100vw - 24px))',
+              }}
+              className="hidden sm:block fixed z-[80] rounded-2xl ios-glass-sheet overflow-hidden animate-fade-in"
+            >
+              {renderOptionsList()}
+            </div>,
+            document.body
+          )}
 
           {/* Mobile bottom iOS glass sheet drawer portaled to body */}
-          {typeof document !== 'undefined' &&
-            createPortal(
+          {createPortal(
+            <div
+              onClick={closeMenu}
+              className="sm:hidden fixed inset-0 z-[80] flex items-end justify-center bg-black/80 backdrop-blur-md animate-backdrop-in"
+            >
               <div
-                onClick={closeMenu}
-                className="sm:hidden fixed inset-0 z-[60] flex items-end justify-center bg-black/75 backdrop-blur-md animate-backdrop-in"
+                ref={mobileSheetRef}
+                className="w-full rounded-t-3xl ios-glass-sheet pb-safe animate-sheet-in"
+                onClick={(e) => e.stopPropagation()}
               >
-                <div
-                  ref={mobileSheetRef}
-                  className="w-full rounded-t-3xl ios-glass-sheet pb-safe animate-sheet-in"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="flex justify-center pt-2.5 pb-1">
-                    <div className="w-10 h-1 rounded-full bg-white/25" />
-                  </div>
-                  <div className="flex items-center justify-between px-5 pt-2 pb-2.5 border-b border-white/[0.09]">
-                    <span className="text-sm font-semibold text-white">
-                      {label ?? placeholder}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={closeMenu}
-                      className="p-1.5 rounded-full ios-glass-pill text-neutral-300 hover:text-white"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <div className="p-2">{renderOptionsList()}</div>
+                <div className="flex justify-center pt-2.5 pb-1">
+                  <div className="w-10 h-1 rounded-full bg-white/25" />
                 </div>
-              </div>,
-              document.body
-            )}
+                <div className="flex items-center justify-between px-5 pt-2 pb-2.5 border-b border-white/[0.09]">
+                  <span className="text-sm font-semibold text-white">
+                    {label ?? placeholder}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Zamknij listę"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      closeMenu();
+                    }}
+                    className="p-2 rounded-full ios-glass-pill text-neutral-300 hover:text-white active:scale-90 transition-all cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="p-2">{renderOptionsList()}</div>
+              </div>
+            </div>,
+            document.body
+          )}
         </>
       )}
     </div>

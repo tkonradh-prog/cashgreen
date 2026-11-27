@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { normalizeLogin } from './auth';
 import { FinanceDB } from './types';
 
 export interface SupabaseSyncResult {
@@ -9,19 +10,35 @@ export interface SupabaseSyncResult {
   error?: string;
 }
 
+export function getFinanceSyncRowId(username?: string): string | null {
+  const normalized = normalizeLogin(username ?? '');
+  if (!normalized) return null;
+  return `user:${normalized}`;
+}
+
 /**
- * Attempts to load the active FinanceDB from Supabase.
- * Returns null if Supabase is unreachable or tables are not created yet.
+ * Attempts to load the active user's FinanceDB from Supabase.
+ * Never shares data across users. Returns null when no row exists for this user yet.
  */
 export async function fetchFinanceDBFromSupabase(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  username?: string
 ): Promise<SupabaseSyncResult> {
+  const rowId = getFinanceSyncRowId(username);
+  if (!rowId) {
+    return {
+      db: null,
+      source: 'default',
+      isConfigured: true,
+      tablesReady: true,
+    };
+  }
+
   try {
-    // 1. Try fetching from finance_sync table (fastest and atomic)
     const { data: syncRow, error: syncError } = await supabase
       .from('finance_sync')
       .select('data, version, updated_at')
-      .eq('id', 'current')
+      .eq('id', rowId)
       .maybeSingle();
 
     if (syncRow && syncRow.data) {
@@ -35,7 +52,6 @@ export async function fetchFinanceDBFromSupabase(
     }
 
     if (syncError) {
-      // Table doesn't exist yet (PGRST205) or RLS blocked
       const isMissing =
         syncError.code === 'PGRST205' ||
         syncError.message.includes('schema cache') ||
@@ -50,10 +66,10 @@ export async function fetchFinanceDBFromSupabase(
       };
     }
 
-    // Table exists but is empty (first time)
+    // Table exists but user has no saved record yet (new user -> clean start)
     return {
       db: null,
-      source: 'cookies',
+      source: 'default',
       isConfigured: true,
       tablesReady: true,
     };
@@ -69,17 +85,22 @@ export async function fetchFinanceDBFromSupabase(
 }
 
 /**
- * Saves the current FinanceDB to Supabase.
- * Silently catches errors if tables are not created yet.
+ * Saves the active user's FinanceDB to Supabase under `user:<login>`.
  */
 export async function saveFinanceDBToSupabase(
   supabase: SupabaseClient,
-  db: FinanceDB
+  db: FinanceDB,
+  username?: string
 ): Promise<{ ok: boolean; error?: string; tablesMissing?: boolean }> {
+  const rowId = getFinanceSyncRowId(username);
+  if (!rowId) {
+    return { ok: false, error: 'Brak zalogowanego użytkownika' };
+  }
+
   try {
     const { error } = await supabase.from('finance_sync').upsert(
       {
-        id: 'current',
+        id: rowId,
         data: db,
         version: db.version,
         mode: db.mode,

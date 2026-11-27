@@ -1,11 +1,14 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   clearFinanceDBCookies,
+  getBrowserCookies,
   getCookieStorageStats,
+  parseFinanceDBFromCookies,
   saveFinanceDBToCookies,
 } from '@/lib/cookieDb';
+import { normalizeLogin } from '@/lib/auth';
 import { computeAccountsSummary } from '@/lib/analytics';
 import { createId, getCurrentTimeHHMM } from '@/lib/format';
 import {
@@ -61,72 +64,133 @@ interface FinanceContextValue {
 const FinanceContext = createContext<FinanceContextValue | null>(null);
 
 export function FinanceProvider({
+  username,
+  serverLoadedForUsername,
   initialDb,
   todayStr,
   hadExistingCookies,
   supabaseInitialConfig,
   children,
 }: {
+  username: string;
+  serverLoadedForUsername?: string;
   initialDb: FinanceDB;
   todayStr: string;
   hadExistingCookies: boolean;
   supabaseInitialConfig?: SupabaseConfigInfo;
   children: React.ReactNode;
 }) {
-  const [db, setDb] = useState<FinanceDB>(initialDb);
+  const normalizedUser = normalizeLogin(username);
+  const serverMatched =
+    Boolean(normalizedUser) &&
+    normalizeLogin(serverLoadedForUsername ?? '') === normalizedUser;
+
+  const startingDb = useMemo(
+    () => (serverMatched ? initialDb : createCleanDatabase(todayStr)),
+    // Intentionally evaluated for this mounted user instance
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [normalizedUser]
+  );
+
+  const [db, setDb] = useState<FinanceDB>(startingDb);
   const [undoStack, setUndoStack] = useState<FinanceDB[]>([]);
+  const dbRef = useRef<FinanceDB>(startingDb);
+  const undoStackRef = useRef<FinanceDB[]>([]);
   const [storageStats, setStorageStats] = useState<CookieStorageStats>(() =>
-    getCookieStorageStats(initialDb)
+    getCookieStorageStats(startingDb)
   );
   const [supabaseConfig, setSupabaseConfig] = useState<SupabaseConfigInfo>(
-    supabaseInitialConfig ?? {
-      isConfigured: true,
-      tablesReady: false,
-      source: 'cookies',
-      status: 'offline_cookies',
-    }
+    serverMatched && supabaseInitialConfig
+      ? supabaseInitialConfig
+      : {
+          isConfigured: true,
+          tablesReady: false,
+          source: 'default',
+          status: 'syncing',
+        }
   );
 
   const supabase = useMemo(() => createClient(), []);
 
-  // Check connection on mount & bootstrap Supabase if tables are ready but empty
+  // Load this user's own data from Supabase (or seed their fresh 0 zl DB if new user)
   useEffect(() => {
     let isMounted = true;
-    checkSupabaseConnection(supabase).then(async (res) => {
+
+    const initUserStore = async () => {
+      if (!normalizedUser) return;
+
+      // If client just logged in / registered, fetch user-specific data from Supabase
+      if (!serverMatched) {
+        const res = await fetchFinanceDBFromSupabase(supabase, normalizedUser);
+        if (!isMounted) return;
+
+        if (res.db) {
+          dbRef.current = res.db;
+          setDb(res.db);
+          setStorageStats(saveFinanceDBToCookies(res.db, normalizedUser));
+        } else {
+          const cookieFallback = parseFinanceDBFromCookies(
+            getBrowserCookies(),
+            normalizedUser
+          );
+          const cleanDb = cookieFallback ?? createCleanDatabase(todayStr);
+          dbRef.current = cleanDb;
+          setDb(cleanDb);
+          setStorageStats(saveFinanceDBToCookies(cleanDb, normalizedUser));
+          if (res.tablesReady) {
+            await saveFinanceDBToSupabase(supabase, cleanDb, normalizedUser);
+          }
+        }
+
+        if (!isMounted) return;
+        setSupabaseConfig({
+          isConfigured: true,
+          tablesReady: res.tablesReady,
+          source: res.db ? 'supabase' : 'default',
+          status: res.tablesReady ? 'connected' : 'needs_migration',
+          error: res.error,
+        });
+        return;
+      }
+
+      // Server already loaded for this exact user: confirm connection & initialize row if empty
+      const conn = await checkSupabaseConnection(supabase);
       if (!isMounted) return;
-      if (res.tablesReady && supabaseInitialConfig?.source !== 'supabase') {
-        await saveFinanceDBToSupabase(supabase, initialDb);
+      if (conn.tablesReady && supabaseInitialConfig?.source !== 'supabase') {
+        await saveFinanceDBToSupabase(supabase, startingDb, normalizedUser);
       }
       if (!isMounted) return;
       setSupabaseConfig((prev) => ({
         ...prev,
         isConfigured: true,
-        tablesReady: res.tablesReady,
-        source: res.tablesReady ? 'supabase' : prev.source,
-        status: res.tablesReady
+        tablesReady: conn.tablesReady,
+        source: conn.tablesReady ? 'supabase' : prev.source,
+        status: conn.tablesReady
           ? 'connected'
-          : res.ok
+          : conn.ok
             ? 'needs_migration'
             : 'error',
-        error: res.error,
+        error: conn.error,
       }));
-    });
+    };
+
+    void initUserStore();
     return () => {
       isMounted = false;
     };
-  }, [supabase, initialDb, supabaseInitialConfig?.source]);
+  }, [supabase, normalizedUser, serverMatched, startingDb, supabaseInitialConfig?.source, todayStr]);
 
-  // Persist initial seed on first visit so cookies immediately act as active local DB
+  // Persist user-scoped cookies on mount when needed
   useEffect(() => {
-    if (!hadExistingCookies) {
-      saveFinanceDBToCookies(initialDb);
+    if (serverMatched && !hadExistingCookies) {
+      saveFinanceDBToCookies(startingDb, normalizedUser);
     }
-  }, [hadExistingCookies, initialDb]);
+  }, [serverMatched, hadExistingCookies, startingDb, normalizedUser]);
 
   const pushToSupabase = useCallback(
     async (targetDb: FinanceDB): Promise<boolean> => {
       try {
-        const res = await saveFinanceDBToSupabase(supabase, targetDb);
+        const res = await saveFinanceDBToSupabase(supabase, targetDb, normalizedUser);
         if (res.ok) {
           setSupabaseConfig((c) => ({
             ...c,
@@ -160,42 +224,44 @@ export function FinanceProvider({
         return false;
       }
     },
-    [supabase]
+    [supabase, normalizedUser]
   );
 
   const commitDb = useCallback(
     (updater: (prev: FinanceDB) => FinanceDB, recordUndo = true) => {
-      setDb((prev) => {
-        const next = {
-          ...updater(prev),
-          updatedAt: todayStr,
-        };
-        if (recordUndo) {
-          setUndoStack((stack) => [...stack.slice(-9), prev]);
-        }
-        const stats = saveFinanceDBToCookies(next);
-        setStorageStats(stats);
-        void pushToSupabase(next);
-        return next;
-      });
+      const prev = dbRef.current;
+      const next: FinanceDB = {
+        ...updater(prev),
+        updatedAt: todayStr,
+      };
+      dbRef.current = next;
+      setDb(next);
+      if (recordUndo) {
+        const nextStack = [...undoStackRef.current.slice(-9), prev];
+        undoStackRef.current = nextStack;
+        setUndoStack(nextStack);
+      }
+      const stats = saveFinanceDBToCookies(next, normalizedUser);
+      setStorageStats(stats);
+      void pushToSupabase(next);
     },
-    [todayStr, pushToSupabase]
+    [todayStr, pushToSupabase, normalizedUser]
   );
 
   const undoLast = useCallback(() => {
-    let restored = false;
-    setUndoStack((stack) => {
-      if (stack.length === 0) return stack;
-      const previous = stack[stack.length - 1];
-      restored = true;
-      setDb(previous);
-      const stats = saveFinanceDBToCookies(previous);
-      setStorageStats(stats);
-      void pushToSupabase(previous);
-      return stack.slice(0, -1);
-    });
-    return restored;
-  }, [pushToSupabase]);
+    const stack = undoStackRef.current;
+    if (stack.length === 0) return false;
+    const previous = stack[stack.length - 1];
+    const nextStack = stack.slice(0, -1);
+    undoStackRef.current = nextStack;
+    setUndoStack(nextStack);
+    dbRef.current = previous;
+    setDb(previous);
+    const stats = saveFinanceDBToCookies(previous, normalizedUser);
+    setStorageStats(stats);
+    void pushToSupabase(previous);
+    return true;
+  }, [pushToSupabase, normalizedUser]);
 
   const addTransaction = useCallback(
     (tx: Omit<Transaction, 'id'>): Transaction => {
@@ -269,10 +335,9 @@ export function FinanceProvider({
 
   const deleteAccount = useCallback(
     (id: string) => {
-      let deleted = false;
+      if (dbRef.current.accounts.length <= 1) return false;
       commitDb((prev) => {
         if (prev.accounts.length <= 1) return prev;
-        deleted = true;
         return {
           ...prev,
           accounts: prev.accounts.filter((a) => a.id !== id),
@@ -281,7 +346,7 @@ export function FinanceProvider({
           ),
         };
       });
-      return deleted;
+      return true;
     },
     [commitDb]
   );
@@ -345,20 +410,24 @@ export function FinanceProvider({
   const resetToClean = useCallback(() => {
     clearFinanceDBCookies();
     const clean = createCleanDatabase(todayStr);
+    dbRef.current = clean;
     setDb(clean);
+    undoStackRef.current = [];
     setUndoStack([]);
-    setStorageStats(saveFinanceDBToCookies(clean));
+    setStorageStats(saveFinanceDBToCookies(clean, normalizedUser));
     void pushToSupabase(clean);
-  }, [todayStr, pushToSupabase]);
+  }, [todayStr, pushToSupabase, normalizedUser]);
 
   const restoreDemo = useCallback(() => {
     clearFinanceDBCookies();
     const demo = createDemoDatabase(todayStr);
+    dbRef.current = demo;
     setDb(demo);
+    undoStackRef.current = [];
     setUndoStack([]);
-    setStorageStats(saveFinanceDBToCookies(demo));
+    setStorageStats(saveFinanceDBToCookies(demo, normalizedUser));
     void pushToSupabase(demo);
-  }, [todayStr, pushToSupabase]);
+  }, [todayStr, pushToSupabase, normalizedUser]);
 
   const importDatabase = useCallback(
     (nextDb: FinanceDB) => {
@@ -376,7 +445,7 @@ export function FinanceProvider({
   const syncWithSupabase = useCallback(async () => {
     setSupabaseConfig((prev) => ({ ...prev, status: 'syncing' }));
     try {
-      const res = await fetchFinanceDBFromSupabase(supabase);
+      const res = await fetchFinanceDBFromSupabase(supabase, normalizedUser);
       if (res.db) {
         commitDb(() => res.db!, false);
         setSupabaseConfig({
@@ -398,7 +467,7 @@ export function FinanceProvider({
       setSupabaseConfig((prev) => ({ ...prev, status: 'error' }));
       return false;
     }
-  }, [commitDb, supabase]);
+  }, [commitDb, supabase, normalizedUser]);
 
   const exportToSupabase = useCallback(async () => {
     setSupabaseConfig((prev) => ({ ...prev, status: 'syncing' }));

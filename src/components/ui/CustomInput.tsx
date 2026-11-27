@@ -103,7 +103,7 @@ export function AmountInput({
   value,
   onChange,
   error,
-  accent: _accent = 'neutral',
+  accent = 'neutral',
   quickAmountsZloty = [10, 20, 50, 100, 200],
   previewNode,
   placeholder = '0,00',
@@ -138,7 +138,9 @@ export function AmountInput({
         className={`relative flex items-center justify-between gap-3 rounded-2xl bg-white/[0.045] backdrop-blur-xl border transition-all duration-150 px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.09),inset_0_2px_8px_rgba(0,0,0,0.45)] ${
           error
             ? 'border-[#ef4444]/80 ring-2 ring-[#ef4444]/20'
-            : 'border-white/[0.11] hover:border-white/[0.22] focus-within:border-white/45 focus-within:ring-2 focus-within:ring-white/10 focus-within:bg-white/[0.07]'
+            : accent === 'coral'
+              ? 'border-white/[0.11] hover:border-white/[0.22] focus-within:border-[#f87171]/60 focus-within:ring-2 focus-within:ring-[#f87171]/15 focus-within:bg-white/[0.07]'
+              : 'border-white/[0.11] hover:border-white/[0.22] focus-within:border-white/45 focus-within:ring-2 focus-within:ring-white/10 focus-within:bg-white/[0.07]'
         }`}
       >
         <input

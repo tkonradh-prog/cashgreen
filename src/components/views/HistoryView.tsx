@@ -200,11 +200,23 @@ export function HistoryView({
             <h1 className="text-lg sm:text-xl font-extrabold text-white tracking-tight">
               Historia operacji
             </h1>
-            <p className="text-xs text-neutral-400 mt-0.5">
-              {initialMonthFilter
-                ? `Podgląd miesiąca: ${initialMonthFilter}`
-                : 'Przeglądaj, filtruj i wyszukuj wpisy w swoim portfelu.'}
-            </p>
+            <div className="flex flex-wrap items-center gap-2 mt-0.5">
+              <p className="text-xs text-neutral-400">
+                {initialMonthFilter
+                  ? 'Filtrowanie według wybranego miesiąca:'
+                  : 'Przeglądaj, filtruj i wyszukuj wpisy w swoim portfelu.'}
+              </p>
+              {initialMonthFilter && (
+                <button
+                  type="button"
+                  onClick={() => onClearInitialMonthFilter?.()}
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/15 hover:bg-white/25 text-white text-[11px] font-bold cursor-pointer"
+                >
+                  <span>{initialMonthFilter}</span>
+                  <span aria-hidden="true">×</span>
+                </button>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {hasActiveFilters && (
@@ -253,7 +265,7 @@ export function HistoryView({
           <div className="rounded-2xl finte-card-elevated p-3.5 sm:p-4 animate-card-in stagger-4">
             <div className="text-[11px] font-semibold text-neutral-400">Bilans widoku</div>
             <div
-              className={`text-xl sm:text-2xl font-extrabold tabular-nums mt-1 ${
+              className={`text-lg sm:text-2xl font-extrabold tabular-nums whitespace-nowrap mt-1 ${
                 stats.net < 0 ? 'text-[#f87171]' : 'text-white'
               }`}
             >
@@ -305,15 +317,15 @@ export function HistoryView({
           }`}
         >
           <div className="overflow-hidden min-h-0 sm:overflow-visible">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2.5 pt-0.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-0.5">
           <SearchInput
             value={query}
             onChange={setQuery}
-            className="hidden sm:flex lg:col-span-4"
+            className="hidden sm:flex sm:col-span-2 lg:col-span-4"
             placeholder="Szukaj operacji, kwoty, notatki..."
           />
 
-          <div className="lg:col-span-2">
+          <div>
             <CustomSelect<TypeFilter>
               compact
               value={typeFilter}
@@ -328,7 +340,7 @@ export function HistoryView({
             />
           </div>
 
-          <div className="lg:col-span-2">
+          <div>
             <CustomSelect
               compact
               value={accountFilter}
@@ -345,7 +357,7 @@ export function HistoryView({
             />
           </div>
 
-          <div className="lg:col-span-2">
+          <div>
             <CustomSelect
               compact
               value={categoryFilter}
@@ -362,7 +374,7 @@ export function HistoryView({
             />
           </div>
 
-          <div className="lg:col-span-2">
+          <div>
             <CustomSelect<PeriodFilter>
               compact
               value={periodFilter}
@@ -422,15 +434,29 @@ export function HistoryView({
           <p className="text-xs text-neutral-500">
             Zmień zakres czasu, wyczyść wyszukiwarkę lub dodaj nowy wydatek.
           </p>
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#141822] border border-[#222938] text-xs font-semibold text-white cursor-pointer"
-            >
-              Pokaż bieżący miesiąc
-            </button>
-          )}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {periodFilter !== 'all' && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClearInitialMonthFilter?.();
+                  setPeriodFilter('all');
+                }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white text-black text-xs font-bold cursor-pointer"
+              >
+                Pokaż wszystkie okresy
+              </button>
+            )}
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#141822] border border-[#222938] text-xs font-semibold text-white cursor-pointer"
+              >
+                Pokaż bieżący miesiąc
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="space-y-4">
@@ -478,7 +504,7 @@ export function HistoryView({
                         tx.isPlanned ? 'opacity-70' : ''
                       }`}
                     >
-                      <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         <span
                           className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-white/10 text-white"
                           style={{
@@ -494,9 +520,9 @@ export function HistoryView({
                           )}
                         </span>
 
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="text-sm font-semibold text-white truncate">
+                            <span className="text-sm font-semibold text-white line-clamp-1 sm:truncate">
                               {tx.title}
                             </span>
                             {tx.isPlanned && (
@@ -512,24 +538,24 @@ export function HistoryView({
                           </div>
 
                           <div className="text-[11px] sm:text-xs text-neutral-400 flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-                            <span>
+                            <span className="truncate max-w-full">
                               {tx.type === 'transfer'
                                 ? `${acc?.name ?? ''} → ${toAcc?.name ?? ''}`
                                 : `${cat?.name ?? (tx.isAdjustment ? 'Wyrównanie' : 'Inne')} · ${acc?.name ?? ''}`}
                             </span>
-                            {group.date === 'all' && <span>• {tx.date}</span>}
+                            {group.date === 'all' && <span className="whitespace-nowrap">• {tx.date}</span>}
                             {tx.time && <span className="hidden sm:inline">• {tx.time}</span>}
-                            {tx.note && <span className="text-neutral-500 truncate">({tx.note})</span>}
+                            {tx.note && <span className="text-neutral-500 truncate max-w-[180px] sm:max-w-none">({tx.note})</span>}
                           </div>
                         </div>
                       </div>
 
                       <div
-                        className="flex items-center gap-1.5 sm:gap-3 shrink-0"
+                        className="flex items-center gap-1 sm:gap-3 shrink-0"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <span
-                          className={`text-sm sm:text-base font-bold tabular-nums ${
+                          className={`text-sm sm:text-base font-bold tabular-nums whitespace-nowrap ${
                             tx.type === 'income' ? 'text-[#2dd4bf]' : amountColor
                           }`}
                         >

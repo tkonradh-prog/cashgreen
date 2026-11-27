@@ -248,7 +248,7 @@ export function AnalyticsView({
           <div className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">
             Przychody {scope === 'year' ? `(${activeYear})` : '(razem)'}
           </div>
-          <div className="text-lg sm:text-2xl font-extrabold tabular-nums text-white mt-1">
+          <div className="text-lg sm:text-2xl font-extrabold tabular-nums whitespace-nowrap text-white mt-1">
             <AnimatedPLN valueGrosze={kpiSummary.income} />
           </div>
         </div>
@@ -257,7 +257,7 @@ export function AnalyticsView({
           <div className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">
             Wydatki {scope === 'year' ? `(${activeYear})` : '(razem)'}
           </div>
-          <div className="text-lg sm:text-2xl font-extrabold tabular-nums text-[#f87171] mt-1">
+          <div className="text-lg sm:text-2xl font-extrabold tabular-nums whitespace-nowrap text-[#f87171] mt-1">
             <AnimatedPLN valueGrosze={kpiSummary.expense} />
           </div>
         </div>
@@ -266,7 +266,7 @@ export function AnalyticsView({
           <div className="text-[11px] font-semibold text-neutral-300/80 uppercase tracking-wider">
             Zarobek netto
           </div>
-          <div className="text-lg sm:text-2xl font-black tabular-nums mt-1 text-white">
+          <div className="text-lg sm:text-2xl font-black tabular-nums whitespace-nowrap mt-1 text-white">
             <AnimatedPLN valueGrosze={kpiSummary.net} showSign />
           </div>
         </div>
@@ -275,7 +275,7 @@ export function AnalyticsView({
           <div className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">
             Średnia / mies.
           </div>
-          <div className="text-lg sm:text-2xl font-extrabold tabular-nums text-white mt-1">
+          <div className="text-lg sm:text-2xl font-extrabold tabular-nums whitespace-nowrap text-white mt-1">
             <AnimatedPLN valueGrosze={kpiSummary.avgMonthly} />
           </div>
         </div>
@@ -357,9 +357,50 @@ export function AnalyticsView({
               </span>
             </div>
 
-            {/* Monthly Realization Table (Image 3) */}
-            <div className="overflow-x-auto -mx-2 px-2 pt-2 border-t border-[#181d28]">
-              <table className="w-full min-w-[500px] text-left border-collapse">
+            {/* Monthly Realization: Mobile Cards + Desktop Table */}
+            <div className="sm:hidden space-y-2 pt-3 border-t border-[#181d28]">
+              {monthlyBuckets.map((b) => {
+                const hasActivity = b.hasData && !b.isForecastOnly;
+                const diff = b.diffGrosze;
+                const isPositive = diff >= 0;
+                return (
+                  <button
+                    key={b.ym}
+                    type="button"
+                    onClick={() => onInspectMonth(b.ym)}
+                    className="w-full rounded-xl ios-glass-inset px-3.5 py-2.5 flex items-center justify-between gap-2 text-left active:scale-[0.99] transition-transform cursor-pointer"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-white">
+                        {POLISH_MONTHS_FULL[b.monthIndex]}
+                      </div>
+                      <div className="text-[11px] text-neutral-400 tabular-nums">
+                        Cel: {formatPLN(b.targetGrosze)}
+                      </div>
+                    </div>
+                    <div className="text-right tabular-nums shrink-0">
+                      <div className="text-xs font-extrabold text-white">
+                        {hasActivity ? formatPLN(b.valueGrosze) : '0,00 zł'}
+                      </div>
+                      <div
+                        className={`text-[11px] font-bold ${
+                          !hasActivity
+                            ? 'text-neutral-500'
+                            : isPositive
+                              ? 'text-[#2dd4bf]'
+                              : 'text-[#f87171]'
+                        }`}
+                      >
+                        {hasActivity ? formatPLN(diff, { showSign: true }) : '—'}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="hidden sm:block overflow-x-auto -mx-2 px-2 pt-2 border-t border-[#181d28]">
+              <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-[#1c2230] text-[10px] font-semibold tracking-wider uppercase text-neutral-400">
                     <th className="py-2.5 pr-3">Miesiąc</th>
@@ -386,13 +427,13 @@ export function AnalyticsView({
                             ({POLISH_MONTHS_FULL[b.monthIndex]})
                           </span>
                         </td>
-                        <td className="py-2.5 px-3 text-right font-bold tabular-nums text-white">
+                        <td className="py-2.5 px-3 text-right font-bold tabular-nums text-white whitespace-nowrap">
                           {hasActivity ? formatPLN(b.valueGrosze) : '0,00 zł'}
                         </td>
-                        <td className="py-2.5 px-3 text-right tabular-nums text-neutral-400">
+                        <td className="py-2.5 px-3 text-right tabular-nums text-neutral-400 whitespace-nowrap">
                           {formatPLN(b.targetGrosze)}
                         </td>
-                        <td className="py-2.5 pl-3 text-right tabular-nums font-bold">
+                        <td className="py-2.5 pl-3 text-right tabular-nums font-bold whitespace-nowrap">
                           {hasActivity ? (
                             <span className={isPositive ? 'text-[#2dd4bf]' : 'text-[#f87171]'}>
                               {formatPLN(diff, { showSign: true })}
@@ -428,9 +469,47 @@ export function AnalyticsView({
               onSelectMonth={(ym) => onInspectMonth(ym)}
             />
 
-            {/* Table: LINIA | CAŁY ROK | UDZIAŁ | ZREALIZOWANE (Image 4) */}
-            <div className="overflow-x-auto -mx-2 px-2 pt-2 border-t border-[#181d28]">
-              <table className="w-full min-w-[500px] text-left border-collapse">
+            {/* Category Breakdown: Mobile Cards + Desktop Table */}
+            <div className="sm:hidden space-y-2 pt-3 border-t border-[#181d28]">
+              {categoryBreakdown.rows.map((row) => (
+                <div
+                  key={row.categoryId}
+                  className="rounded-xl ios-glass-inset px-3.5 py-2.5 flex items-center justify-between gap-2"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: row.color }}
+                    />
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-white truncate">{row.name}</div>
+                      <div className="text-[11px] text-neutral-400 tabular-nums">
+                        Udział: {row.sharePct}%
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right tabular-nums shrink-0">
+                    <div className="text-xs font-bold text-[#2dd4bf]">
+                      {formatPLN(row.totalGrosze)}
+                    </div>
+                    {row.plannedGrosze > 0 && (
+                      <div className="text-[10px] text-neutral-400">
+                        Rok: {formatPLN(row.totalGrosze + row.plannedGrosze)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <div className="rounded-xl bg-white/[0.06] border border-white/15 px-3.5 py-2.5 flex items-center justify-between text-xs font-black text-white">
+                <span>{metric === 'income' ? 'Przychód razem' : 'Wydatki razem'}</span>
+                <span className="tabular-nums text-[#2dd4bf]">
+                  {formatPLN(categoryBreakdown.totalRealizedGrosze)}
+                </span>
+              </div>
+            </div>
+
+            <div className="hidden sm:block overflow-x-auto -mx-2 px-2 pt-2 border-t border-[#181d28]">
+              <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-[#1c2230] text-[10px] font-semibold tracking-wider uppercase text-neutral-400">
                     <th className="py-2.5 pr-3">Linia / Kategoria</th>
@@ -442,31 +521,35 @@ export function AnalyticsView({
                 <tbody className="divide-y divide-[#181d28] text-xs sm:text-sm">
                   {categoryBreakdown.rows.map((row) => (
                     <tr key={row.categoryId} className="hover:bg-[#12151e] transition-colors">
-                      <td className="py-3 pr-3 font-semibold text-white flex items-center gap-2.5">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: row.color }}
-                        />
-                        <span>{row.name}</span>
+                      <td className="py-3 pr-3 font-semibold text-white">
+                        <div className="flex items-center gap-2.5">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: row.color }}
+                          />
+                          <span>{row.name}</span>
+                        </div>
                       </td>
-                      <td className="py-3 px-3 text-right font-bold tabular-nums text-white">
+                      <td className="py-3 px-3 text-right font-bold tabular-nums text-white whitespace-nowrap">
                         {formatPLN(row.totalGrosze + row.plannedGrosze)}
                       </td>
-                      <td className="py-3 px-3 text-center font-bold tabular-nums text-neutral-400">
+                      <td className="py-3 px-3 text-center font-bold tabular-nums text-neutral-400 whitespace-nowrap">
                         {row.sharePct}%
                       </td>
-                      <td className="py-3 pl-3 text-right font-bold tabular-nums text-[#2dd4bf]">
+                      <td className="py-3 pl-3 text-right font-bold tabular-nums text-[#2dd4bf] whitespace-nowrap">
                         {formatPLN(row.totalGrosze)}
                       </td>
                     </tr>
                   ))}
                   <tr className="border-t border-[#222a3a] font-black text-white text-xs sm:text-sm">
-                    <td className="py-3 pr-3">Przychód razem</td>
-                    <td className="py-3 px-3 text-right tabular-nums">
+                    <td className="py-3 pr-3">
+                      {metric === 'income' ? 'Przychód razem' : 'Wydatki razem'}
+                    </td>
+                    <td className="py-3 px-3 text-right tabular-nums whitespace-nowrap">
                       {formatPLN(categoryBreakdown.totalRealizedGrosze + categoryBreakdown.totalPlannedGrosze)}
                     </td>
-                    <td className="py-3 px-3 text-center tabular-nums">100%</td>
-                    <td className="py-3 pl-3 text-right tabular-nums text-[#2dd4bf]">
+                    <td className="py-3 px-3 text-center tabular-nums whitespace-nowrap">100%</td>
+                    <td className="py-3 pl-3 text-right tabular-nums text-[#2dd4bf] whitespace-nowrap">
                       {formatPLN(categoryBreakdown.totalRealizedGrosze)}
                     </td>
                   </tr>
@@ -573,9 +656,74 @@ export function AnalyticsView({
               </span>
             </div>
 
-            {/* Annual Multi-Year Table (Image 2) */}
-            <div className="overflow-x-auto -mx-2 px-2 pt-2 border-t border-[#181d28]">
-              <table className="w-full min-w-[620px] text-left border-collapse">
+            {/* Annual Multi-Year: Mobile Cards + Desktop Table */}
+            <div className="sm:hidden space-y-2.5 pt-3 border-t border-[#181d28]">
+              {annualRows.map((row) => {
+                const isGood =
+                  metric === 'expense'
+                    ? row.realizationPct <= 100
+                    : row.realizationPct >= 100;
+                return (
+                  <button
+                    key={row.year}
+                    type="button"
+                    onClick={() => {
+                      setSelectedYear(row.year);
+                      setScope('year');
+                    }}
+                    className="w-full rounded-xl ios-glass-inset p-3.5 text-left space-y-2 active:scale-[0.99] transition-transform cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-extrabold text-white tabular-nums">
+                        {row.year}
+                        {row.isIncomplete && (
+                          <span className="ml-1.5 text-[11px] font-normal text-neutral-400">
+                            ({row.monthsActive} mies.)
+                          </span>
+                        )}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {row.yoyPct !== null && (
+                          <span
+                            className={`text-xs font-bold tabular-nums ${
+                              row.yoyPct >= 0 ? 'text-[#2dd4bf]' : 'text-[#f87171]'
+                            }`}
+                          >
+                            {row.yoyPct >= 0 ? `+${row.yoyPct}%` : `${row.yoyPct}%`} R/R
+                          </span>
+                        )}
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[11px] font-bold tabular-nums ${
+                            isGood
+                              ? 'bg-emerald-500/15 text-emerald-300'
+                              : 'bg-amber-500/15 text-amber-300'
+                          }`}
+                        >
+                          {row.realizationPct}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs tabular-nums">
+                      <div>
+                        <span className="text-neutral-400 block text-[10px]">{metricMeta.title}</span>
+                        <strong className="text-white">
+                          {formatPLN(row.valueGrosze, { compactZeroDecimals: true })}
+                        </strong>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-neutral-400 block text-[10px]">Średnia / mies.</span>
+                        <strong className="text-neutral-200">
+                          {formatPLN(row.avgMonthlyGrosze, { compactZeroDecimals: true })}
+                        </strong>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="hidden sm:block overflow-x-auto -mx-2 px-2 pt-2 border-t border-[#181d28]">
+              <table className="w-full min-w-[600px] text-left border-collapse">
                 <thead>
                   <tr className="border-b border-[#1c2230] text-[10px] font-semibold tracking-wider uppercase text-neutral-400">
                     <th className="py-2.5 pr-3">Rok</th>
@@ -611,10 +759,10 @@ export function AnalyticsView({
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-right font-bold tabular-nums text-white">
+                        <td className="py-3 px-3 text-right font-bold tabular-nums text-white whitespace-nowrap">
                           {formatPLN(row.valueGrosze, { compactZeroDecimals: true })}
                         </td>
-                        <td className="py-3 px-3 text-right tabular-nums text-neutral-400">
+                        <td className="py-3 px-3 text-right tabular-nums text-neutral-400 whitespace-nowrap">
                           {formatPLN(row.targetGrosze, { compactZeroDecimals: true })}
                         </td>
                         <td className="py-3 px-3 text-center">
@@ -628,13 +776,13 @@ export function AnalyticsView({
                             {row.realizationPct}%
                           </span>
                         </td>
-                        <td className="py-3 px-3 text-right tabular-nums text-neutral-300">
+                        <td className="py-3 px-3 text-right tabular-nums text-neutral-300 whitespace-nowrap">
                           {formatPLN(row.avgMonthlyGrosze, { compactZeroDecimals: true })}
                         </td>
-                        <td className="py-3 px-3 text-right tabular-nums text-white font-semibold">
+                        <td className="py-3 px-3 text-right tabular-nums text-white font-semibold whitespace-nowrap">
                           {formatPLN(row.bestMonthGrosze, { compactZeroDecimals: true })}
                         </td>
-                        <td className="py-3 pl-3 text-right tabular-nums font-bold">
+                        <td className="py-3 pl-3 text-right tabular-nums font-bold whitespace-nowrap">
                           {row.yoyPct !== null ? (
                             <span className={row.yoyPct >= 0 ? 'text-[#2dd4bf]' : 'text-[#f87171]'}>
                               {row.yoyPct >= 0 ? `+${row.yoyPct}%` : `${row.yoyPct}%`}
@@ -765,11 +913,11 @@ function MonthlyBarChart({
   const yMin = minVal < 0 ? Math.floor((minVal * 1.15) / 100000) * 100000 : 0;
   const span = Math.max(100000, yMax - yMin);
 
-  const W = 740;
+  const W = 680;
   const H = 220;
-  const padL = 68;
-  const padR = 18;
-  const padT = 28;
+  const padL = 52;
+  const padR = 12;
+  const padT = 30;
   const padB = 34;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
@@ -810,10 +958,10 @@ function MonthlyBarChart({
         </div>
       )}
 
-      <div className="w-full overflow-x-auto">
+      <div className="w-full">
         <svg
           viewBox={`0 0 ${W} ${H}`}
-          className="w-full min-w-[540px] h-auto select-none"
+          className="w-full h-auto select-none"
           onMouseLeave={() => onHover(null)}
         >
           {ticks.map((t, idx) => {
@@ -829,7 +977,7 @@ function MonthlyBarChart({
                   strokeWidth={t === 0 ? 1.5 : 1}
                 />
                 <text
-                  x={padL - 8}
+                  x={padL - 6}
                   y={y + 4}
                   textAnchor="end"
                   fill="#64748b"
@@ -890,27 +1038,12 @@ function MonthlyBarChart({
                   />
                 )}
 
-                {/* Value label on top of bar (Image 1 style) */}
-                {activeValue > 0 && (
-                  <text
-                    x={cx}
-                    y={barTop - 6}
-                    textAnchor="middle"
-                    fill={isHovered ? '#ffffff' : '#cbd5e1'}
-                    fontSize="10.5"
-                    fontWeight={isHovered ? '700' : '600'}
-                    className="tabular-nums"
-                  >
-                    {formatCompactTys(activeValue)}
-                  </text>
-                )}
-
                 <text
                   x={cx}
                   y={H - 9}
                   textAnchor="middle"
                   fill={isHovered ? '#ffffff' : '#64748b'}
-                  fontSize="11.5"
+                  fontSize="12"
                   fontWeight={isHovered ? '700' : '500'}
                 >
                   {b.label}
@@ -919,15 +1052,43 @@ function MonthlyBarChart({
             );
           })}
 
-          {/* Cel miesięczny (dashed target line) */}
+          {/* Cel miesięczny (dashed target line drawn below value labels) */}
           <polyline
             fill="none"
             stroke="#94a3b8"
             strokeWidth="1.75"
             strokeDasharray="5 5"
-            opacity="0.85"
+            opacity="0.75"
             points={targetPoints}
+            className="pointer-events-none"
           />
+
+          {/* Value labels on top of bars with dark stroke halo for legibility */}
+          {buckets.map((b, i) => {
+            const cx = padL + i * colW + colW / 2;
+            const activeValue = b.isForecastOnly ? b.plannedValueGrosze : b.valueGrosze;
+            if (activeValue <= 0) return null;
+            const barTop = Math.min(zeroY, yToPx(activeValue));
+            const isHovered = hoveredIdx === i;
+            return (
+              <text
+                key={`lbl-${b.ym}`}
+                x={cx}
+                y={barTop - 7}
+                textAnchor="middle"
+                fill={isHovered ? '#ffffff' : '#e2e8f0'}
+                stroke="#0c0f17"
+                strokeWidth="4"
+                strokeLinejoin="round"
+                style={{ paintOrder: 'stroke' }}
+                fontSize="10.5"
+                fontWeight={isHovered ? '700' : '600'}
+                className="tabular-nums pointer-events-none"
+              >
+                {formatCompactTys(activeValue, false)}
+              </text>
+            );
+          })}
         </svg>
       </div>
     </div>
@@ -948,10 +1109,10 @@ function DivergingGoalChart({
   const absMax = Math.max(100000, ...vals.map((v) => Math.abs(v)));
   const bound = Math.ceil((absMax * 1.18) / 100000) * 100000;
 
-  const W = 740;
+  const W = 680;
   const H = 210;
-  const padL = 68;
-  const padR = 18;
+  const padL = 52;
+  const padR = 12;
   const padT = 20;
   const padB = 30;
   const plotW = W - padL - padR;
@@ -970,7 +1131,7 @@ function DivergingGoalChart({
   return (
     <div className="space-y-2">
       {hovered && hovered.hasData && !hovered.isForecastOnly && (
-        <div className="rounded-xl ios-glass-sheet px-3.5 py-2 flex items-center justify-between text-xs tabular-nums animate-fade-in">
+        <div className="rounded-xl ios-glass-sheet px-3.5 py-2 flex flex-wrap items-center justify-between gap-1 text-xs tabular-nums animate-fade-in">
           <span className="font-bold text-white">{POLISH_MONTHS_FULL[hovered.monthIndex]}</span>
           <span className={hovered.diffGrosze >= 0 ? 'text-[#2dd4bf]' : 'text-[#f87171]'}>
             {formatPLN(hovered.diffGrosze, { showSign: true })} (narastająco od stycznia:{' '}
@@ -979,10 +1140,10 @@ function DivergingGoalChart({
         </div>
       )}
 
-      <div className="w-full overflow-x-auto">
+      <div className="w-full">
         <svg
           viewBox={`0 0 ${W} ${H}`}
-          className="w-full min-w-[500px] h-auto select-none"
+          className="w-full h-auto select-none"
           onMouseLeave={() => onHover(null)}
         >
           {[bound, 0, -bound].map((t, idx) => {
@@ -1020,7 +1181,12 @@ function DivergingGoalChart({
             const barH = Math.max(3, Math.abs(yToPx(b.diffGrosze) - zeroY));
 
             return (
-              <g key={b.ym} onMouseEnter={() => onHover(i)}>
+              <g
+                key={b.ym}
+                className="cursor-pointer"
+                onMouseEnter={() => onHover(i)}
+                onClick={() => onHover(i)}
+              >
                 {showBar && (
                   <rect
                     x={cx - barW / 2}
@@ -1092,11 +1258,11 @@ function StackedCategoryBarChart({
   const maxTotal = Math.max(100000, ...monthlyTotals.map((m) => m.totalSum));
   const yMax = Math.ceil((maxTotal * 1.15) / 100000) * 100000;
 
-  const W = 740;
+  const W = 680;
   const H = 220;
-  const padL = 68;
-  const padR = 18;
-  const padT = 28;
+  const padL = 52;
+  const padR = 12;
+  const padT = 30;
   const padB = 34;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
@@ -1130,10 +1296,10 @@ function StackedCategoryBarChart({
         </div>
       )}
 
-      <div className="w-full overflow-x-auto">
+      <div className="w-full">
         <svg
           viewBox={`0 0 ${W} ${H}`}
-          className="w-full min-w-[540px] h-auto select-none"
+          className="w-full h-auto select-none"
           onMouseLeave={() => onHover(null)}
         >
           {ticks.map((t, idx) => {
@@ -1210,14 +1376,14 @@ function StackedCategoryBarChart({
                 {m.realizedSum > 0 && (
                   <text
                     x={cx}
-                    y={currentBottomY - 6}
+                    y={currentBottomY - 7}
                     textAnchor="middle"
-                    fill={isHovered ? '#ffffff' : '#cbd5e1'}
+                    fill={isHovered ? '#ffffff' : '#e2e8f0'}
                     fontSize="10.5"
                     fontWeight={isHovered ? '700' : '600'}
                     className="tabular-nums"
                   >
-                    {formatCompactTys(m.realizedSum)}
+                    {formatCompactTys(m.realizedSum, false)}
                   </text>
                 )}
 
@@ -1272,12 +1438,12 @@ function AnnualPairedChart({
   );
   const yMax = Math.ceil((maxVal * 1.18) / 100000) * 100000;
 
-  const W = 740;
-  const H = 230;
-  const padL = 72;
-  const padR = 20;
+  const W = 600;
+  const H = 220;
+  const padL = 56;
+  const padR = 14;
   const padT = 26;
-  const padB = 40;
+  const padB = 38;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
   const groupW = plotW / rows.length;
@@ -1285,10 +1451,10 @@ function AnnualPairedChart({
   const ticks = [0, Math.round(yMax * 0.5), yMax];
 
   return (
-    <div className="w-full overflow-x-auto">
+    <div className="w-full">
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        className="w-full min-w-[500px] h-auto select-none"
+        className="w-full h-auto select-none"
         onMouseLeave={() => onHover(null)}
       >
         {ticks.map((t, i) => {
@@ -1405,10 +1571,10 @@ function RollingTrendChart({
   const yMin = minV < 0 ? Math.floor((minV * 1.14) / 100000) * 100000 : 0;
   const span = Math.max(100000, yMax - yMin);
 
-  const W = 740;
-  const H = 220;
-  const padL = 68;
-  const padR = 58;
+  const W = 660;
+  const H = 215;
+  const padL = 54;
+  const padR = 16;
   const padT = 20;
   const padB = 30;
   const plotW = W - padL - padR;
@@ -1431,7 +1597,7 @@ function RollingTrendChart({
   return (
     <div className="space-y-2">
       {hovered && (
-        <div className="rounded-xl ios-glass-sheet px-3.5 py-2 flex items-center justify-between text-xs tabular-nums animate-fade-in">
+        <div className="rounded-xl ios-glass-sheet px-3.5 py-2 flex flex-wrap items-center justify-between gap-1 text-xs tabular-nums animate-fade-in">
           <span className="font-bold text-white">{hovered.label}</span>
           <span className="text-white">
             Miesiąc: <strong>{formatPLN(hovered.singleValueGrosze)}</strong>
@@ -1445,10 +1611,10 @@ function RollingTrendChart({
         </div>
       )}
 
-      <div className="w-full overflow-x-auto">
+      <div className="w-full">
         <svg
           viewBox={`0 0 ${W} ${H}`}
-          className="w-full min-w-[500px] h-auto select-none"
+          className="w-full h-auto select-none"
           onMouseLeave={() => onHover(null)}
         >
           {[yMin, Math.round(yMin + span * 0.5), yMax].map((t, i) => {
@@ -1508,7 +1674,9 @@ function RollingTrendChart({
                   width={Math.max(8, segW)}
                   height={plotH}
                   fill="transparent"
+                  className="cursor-pointer"
                   onMouseEnter={() => onHover(i)}
+                  onClick={() => onHover(i)}
                 />
               </g>
             );
@@ -1534,12 +1702,12 @@ function HeatmapGrid({
   const maxPositive = Math.max(100000, ...allPositiveVals);
 
   return (
-    <div className="overflow-x-auto -mx-2 px-2">
-      <div className="min-w-[560px] space-y-1.5">
-        <div className="grid grid-cols-[44px_repeat(12,minmax(0,1fr))] gap-1 text-center pb-1">
+    <div className="w-full">
+      <div className="space-y-1.5">
+        <div className="grid grid-cols-[34px_repeat(12,minmax(0,1fr))] sm:grid-cols-[44px_repeat(12,minmax(0,1fr))] gap-0.5 sm:gap-1 text-center pb-1">
           <div />
           {POLISH_MONTHS_SHORT.map((m) => (
-            <div key={m} className="text-[11px] font-semibold text-neutral-500">
+            <div key={m} className="text-[9.5px] sm:text-[11px] font-semibold text-neutral-500 truncate">
               {m}
             </div>
           ))}
@@ -1548,16 +1716,16 @@ function HeatmapGrid({
         {rows.map((row) => (
           <div
             key={row.year}
-            className="grid grid-cols-[44px_repeat(12,minmax(0,1fr))] gap-1 items-center"
+            className="grid grid-cols-[34px_repeat(12,minmax(0,1fr))] sm:grid-cols-[44px_repeat(12,minmax(0,1fr))] gap-0.5 sm:gap-1 items-center"
           >
-            <div className="text-xs font-bold tabular-nums text-neutral-400">{row.year}</div>
+            <div className="text-[10.5px] sm:text-xs font-bold tabular-nums text-neutral-400">{row.year}</div>
 
             {row.cells.map((cell) => {
               if (cell.isEmpty) {
                 return (
                   <div
                     key={cell.ym}
-                    className="h-9 rounded-lg bg-[#0a0c10] border border-[#181d28]"
+                    className="h-8 sm:h-9 rounded-md sm:rounded-lg bg-[#0a0c10] border border-[#181d28]"
                   />
                 );
               }
@@ -1569,7 +1737,7 @@ function HeatmapGrid({
                     type="button"
                     onClick={() => onCellClick(cell.ym)}
                     title={`${cell.ym} · Prognoza: ${formatPLN(cell.plannedGrosze)}`}
-                    className="h-9 rounded-lg border border-dashed border-neutral-600 bg-white/5 text-[10.5px] font-semibold tabular-nums text-neutral-400 hover:text-white transition cursor-pointer"
+                    className="h-8 sm:h-9 rounded-md sm:rounded-lg border border-dashed border-neutral-600 bg-white/5 text-[8.5px] sm:text-[10.5px] font-semibold tabular-nums text-neutral-400 hover:text-white transition cursor-pointer"
                   >
                     {formatHeatmapValue(cell.plannedGrosze)}
                   </button>
@@ -1601,7 +1769,7 @@ function HeatmapGrid({
                   type="button"
                   onClick={() => onCellClick(cell.ym)}
                   title={`${cell.ym} · ${formatPLN(cell.valueGrosze)}`}
-                  className={`h-9 rounded-lg border text-[11px] font-bold tabular-nums transition-transform hover:scale-[1.04] cursor-pointer ${bgStyle}`}
+                  className={`h-8 sm:h-9 rounded-md sm:rounded-lg border text-[8.5px] sm:text-[11px] font-bold tabular-nums transition-transform hover:scale-[1.04] cursor-pointer ${bgStyle}`}
                 >
                   {formatHeatmapValue(cell.valueGrosze)}
                 </button>

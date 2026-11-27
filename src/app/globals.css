@@ -44,7 +44,20 @@ body {
   color-scheme: dark;
   scroll-behavior: smooth;
   -webkit-tap-highlight-color: transparent;
-  overscroll-behavior-y: contain;
+  overscroll-behavior: none;
+  /* Use 100dvh (dynamic viewport height) so mobile browser chrome doesn't cut content */
+  min-height: 100dvh;
+}
+
+/* Remove 300ms tap delay on all interactive elements */
+button,
+a,
+[role="button"],
+input,
+select,
+textarea,
+label {
+  touch-action: manipulation;
 }
 
 /* Smooth touch momentum scrolling everywhere */
@@ -176,9 +189,18 @@ body {
   background: rgba(255, 255, 255, 0.28);
 }
 
-/* Safe area bottom padding for floating mobile dock */
+/* Safe area padding utilities for notched / Dynamic Island iPhones */
 .pb-safe {
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+.pl-safe {
+  padding-left: env(safe-area-inset-left);
+}
+.pr-safe {
+  padding-right: env(safe-area-inset-right);
 }
 
 /* ========================================================================= */

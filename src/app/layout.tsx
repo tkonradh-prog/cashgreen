@@ -18,13 +18,28 @@ export const metadata: Metadata = {
   title: 'CashFlow · Kontrola gotówki, wydatków i majątku',
   description:
     'Nowoczesna aplikacja do szybkiego rozliczania wydatków, kontroli stanu konta i gotówki oraz szczegółowej analityki finansów osobistych.',
+  manifest: '/manifest.webmanifest',
+  applicationName: 'CashFlow',
+  appleWebApp: {
+    capable: true,
+    title: 'CashFlow',
+    statusBarStyle: 'black-translucent',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
+  },
 };
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: 'cover',
-  themeColor: '#000000',
+  themeColor: '#030407',
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {

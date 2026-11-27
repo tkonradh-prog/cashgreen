@@ -72,60 +72,60 @@ export function WealthView({
           </button>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-2.5 sm:gap-3">
           {/* Hero iOS Glass Net Worth Card */}
-          <div className="relative overflow-hidden col-span-2 lg:col-span-1 rounded-2xl finte-card-elevated text-white p-4 sm:p-5 flex flex-col justify-between animate-card-in">
+          <div className="relative overflow-hidden col-span-2 md:col-span-4 xl:col-span-2 rounded-2xl finte-card-elevated text-white p-4 sm:p-5 flex flex-col justify-between animate-card-in">
             <div className="absolute inset-y-0 w-24 bg-gradient-to-r from-transparent via-white/[0.12] to-transparent pointer-events-none animate-sheen" />
             <div className="relative z-10">
               <div className="text-[11px] font-bold uppercase tracking-wider text-neutral-300/80">
                 Majątek netto
               </div>
-              <div className="text-2xl sm:text-3xl font-black tabular-nums mt-1 text-white">
+              <div className="text-2xl sm:text-3xl font-black tabular-nums whitespace-nowrap mt-1 text-white">
                 <AnimatedPLN valueGrosze={accountsSummary.netWorthGrosze} />
               </div>
             </div>
             <div className="relative z-10 text-[11px] font-medium text-neutral-400 mt-2 tabular-nums">
-              12 mies.: <span className="text-white font-bold">{formatPLN(yearlyDelta, { showSign: true })}</span>
+              12 mies.: <span className="text-white font-bold whitespace-nowrap">{formatPLN(yearlyDelta, { showSign: true })}</span>
             </div>
           </div>
 
-          <div className="rounded-2xl ios-glass-inset p-3.5 sm:p-4.5 animate-card-in stagger-1">
-            <div className="flex items-center gap-2 text-[11px] font-semibold text-neutral-400">
-              <Banknote className="w-4 h-4 text-white" />
-              Gotówka fizyczna
+          <div className="rounded-2xl ios-glass-inset p-3.5 sm:p-4 animate-card-in stagger-1">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-neutral-400">
+              <Banknote className="w-3.5 h-3.5 text-white shrink-0" />
+              <span className="truncate">Gotówka fizyczna</span>
             </div>
-            <div className="text-lg sm:text-xl font-extrabold tabular-nums text-white mt-1.5">
+            <div className="text-base sm:text-lg font-extrabold tabular-nums whitespace-nowrap text-white mt-1.5">
               {formatPLN(accountsSummary.cashTotalGrosze)}
             </div>
           </div>
 
-          <div className="rounded-2xl ios-glass-inset p-3.5 sm:p-4.5 animate-card-in stagger-2">
-            <div className="flex items-center gap-2 text-[11px] font-semibold text-neutral-400">
-              <Landmark className="w-4 h-4 text-white" />
-              Konta bieżące
+          <div className="rounded-2xl ios-glass-inset p-3.5 sm:p-4 animate-card-in stagger-2">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-neutral-400">
+              <Landmark className="w-3.5 h-3.5 text-white shrink-0" />
+              <span className="truncate">Konta bieżące</span>
             </div>
-            <div className="text-lg sm:text-xl font-extrabold tabular-nums text-white mt-1.5">
+            <div className="text-base sm:text-lg font-extrabold tabular-nums whitespace-nowrap text-white mt-1.5">
               {formatPLN(accountsSummary.bankTotalGrosze)}
             </div>
           </div>
 
-          <div className="rounded-2xl ios-glass-inset p-3.5 sm:p-4.5 animate-card-in stagger-3">
-            <div className="flex items-center gap-2 text-[11px] font-semibold text-neutral-400">
-              <PiggyBank className="w-4 h-4 text-blue-400" />
-              Oszczędności & ETF
+          <div className="rounded-2xl ios-glass-inset p-3.5 sm:p-4 animate-card-in stagger-3">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-neutral-400">
+              <PiggyBank className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+              <span className="truncate">Oszczędności & ETF</span>
             </div>
-            <div className="text-lg sm:text-xl font-extrabold tabular-nums text-white mt-1.5">
+            <div className="text-base sm:text-lg font-extrabold tabular-nums whitespace-nowrap text-white mt-1.5">
               {formatPLN(accountsSummary.savingsAndInvestGrosze)}
             </div>
           </div>
 
-          <div className="rounded-2xl ios-glass-inset p-3.5 sm:p-4.5 animate-card-in stagger-4">
-            <div className="flex items-center gap-2 text-[11px] font-semibold text-neutral-400">
-              <TrendingUp className="w-4 h-4 text-[#f87171]" />
-              Zobowiązania
+          <div className="rounded-2xl ios-glass-inset p-3.5 sm:p-4 animate-card-in stagger-4">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-neutral-400">
+              <TrendingUp className="w-3.5 h-3.5 text-[#f87171] shrink-0" />
+              <span className="truncate">Zobowiązania</span>
             </div>
             <div
-              className={`text-lg sm:text-xl font-extrabold tabular-nums mt-1.5 ${
+              className={`text-base sm:text-lg font-extrabold tabular-nums whitespace-nowrap mt-1.5 ${
                 accountsSummary.liabilitiesGrosze < 0 ? 'text-[#f87171]' : 'text-neutral-500'
               }`}
             >
@@ -231,14 +231,24 @@ export function WealthView({
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-2 rounded-xl ios-glass-inset p-3 text-xs">
-                <div className="flex items-center gap-1.5 text-white tabular-nums">
-                  <ArrowDownLeft className="w-3.5 h-3.5 text-[#2dd4bf] shrink-0" />
-                  <span className="truncate">Wpływy m-c: {formatPLN(acc.monthlyInflowGrosze)}</span>
+              <div className="grid grid-cols-2 gap-2.5 rounded-xl ios-glass-inset p-3 text-xs">
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <span className="inline-flex items-center gap-1 text-[11px] text-neutral-400">
+                    <ArrowDownLeft className="w-3.5 h-3.5 text-[#2dd4bf] shrink-0" />
+                    Wpływy w m-cu
+                  </span>
+                  <span className="font-bold text-white tabular-nums whitespace-nowrap">
+                    {formatPLN(acc.monthlyInflowGrosze)}
+                  </span>
                 </div>
-                <div className="flex items-center gap-1.5 text-neutral-300 tabular-nums justify-end">
-                  <ArrowUpRight className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-                  <span className="truncate">Wypływy: {formatPLN(acc.monthlyOutflowGrosze)}</span>
+                <div className="flex flex-col gap-0.5 min-w-0 items-end text-right">
+                  <span className="inline-flex items-center gap-1 text-[11px] text-neutral-400">
+                    <ArrowUpRight className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                    Wypływy w m-cu
+                  </span>
+                  <span className="font-bold text-neutral-200 tabular-nums whitespace-nowrap">
+                    {formatPLN(acc.monthlyOutflowGrosze)}
+                  </span>
                 </div>
               </div>
 
@@ -315,12 +325,12 @@ function NetWorthAreaChart({
   const yMax = Math.ceil((maxVal + padRange * 0.5) / 100000) * 100000;
   const span = Math.max(100000, yMax - yMin);
 
-  const W = 760;
-  const H = 210;
-  const padL = 68;
-  const padR = 20;
+  const W = 640;
+  const H = 200;
+  const padL = 54;
+  const padR = 14;
   const padT = 18;
-  const padB = 30;
+  const padB = 28;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
 
@@ -334,10 +344,10 @@ function NetWorthAreaChart({
   const ticks = [yMin, Math.round(yMin + span * 0.5), yMax];
 
   return (
-    <div className="w-full overflow-x-auto">
+    <div className="w-full">
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        className="w-full min-w-[520px] h-auto select-none"
+        className="w-full h-auto select-none"
         onMouseLeave={() => onHover(null)}
       >
         <defs>
@@ -381,7 +391,12 @@ function NetWorthAreaChart({
           const cy = yToPx(s.netWorthGrosze);
           const isHovered = hoveredIdx === i;
           return (
-            <g key={s.ym} onMouseEnter={() => onHover(i)}>
+            <g
+              key={s.ym}
+              className="cursor-pointer"
+              onMouseEnter={() => onHover(i)}
+              onClick={() => onHover(i)}
+            >
               <circle
                 cx={cx}
                 cy={cy}

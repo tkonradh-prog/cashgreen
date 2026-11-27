@@ -115,8 +115,11 @@ export function LoginScreen({
         }
       }
 
-      onSuccess?.(data.user);
-      router.refresh();
+      if (onSuccess) {
+        onSuccess(data.user);
+      } else {
+        router.refresh();
+      }
     } catch {
       setError('Błąd połączenia z serwerem.');
       setLoading(false);
@@ -133,8 +136,11 @@ export function LoginScreen({
         setError(res.error ?? 'Logowanie biometryczne nie powiodło się.');
         return;
       }
-      onSuccess?.(res.user);
-      router.refresh();
+      if (onSuccess) {
+        onSuccess(res.user);
+      } else {
+        router.refresh();
+      }
     } finally {
       setBioLoading(false);
     }
@@ -143,30 +149,38 @@ export function LoginScreen({
   const BiometricIcon = bioEnv?.platformKind === 'iphone' ? ScanFace : Fingerprint;
 
   return (
-    <div className="fixed inset-0 bg-transparent text-white flex flex-col px-5 py-safe-or-6 max-w-md mx-auto overflow-hidden select-none" style={{ paddingTop: 'max(env(safe-area-inset-top), 1.5rem)', paddingBottom: 'max(env(safe-area-inset-bottom), 1.5rem)' }}>
+    <div
+      className="min-h-[100dvh] bg-transparent text-white flex flex-col sm:justify-center px-5 max-w-md mx-auto relative overflow-x-hidden overflow-y-auto select-none"
+      style={{
+        paddingTop: 'max(env(safe-area-inset-top), 1.25rem)',
+        paddingBottom: 'max(env(safe-area-inset-bottom), 1.25rem)',
+      }}
+    >
       {/* Ambient glow */}
       <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[300px] h-[200px] bg-gradient-to-b from-teal-400/15 via-sky-400/8 to-transparent blur-3xl pointer-events-none" />
 
-      {/* Logo — small, non-link look */}
-      <div className="flex items-center gap-2 z-10 mb-4 animate-card-in">
-        <CashFlowLogo size="sm" />
-        <span className="text-[11px] font-semibold text-neutral-500 tracking-widest uppercase">CashFlow</span>
-      </div>
+      <div className="w-full flex-1 sm:flex-initial flex flex-col justify-between sm:justify-start sm:gap-5 z-10">
+        <div className="space-y-4">
+          {/* Logo — small, non-link look */}
+          <div className="flex items-center gap-2 animate-card-in">
+            <CashFlowLogo size="sm" />
+            <span className="text-[11px] font-semibold text-neutral-500 tracking-widest uppercase">CashFlow</span>
+          </div>
 
-      {/* Headline — compact */}
-      <div className="z-10 mb-4 animate-card-in">
-        <h1 className="text-2xl font-extrabold tracking-tight leading-tight text-white">
-          Twoje finanse<br />pod pełną kontrolą
-        </h1>
-        <p className="text-xs text-neutral-400 mt-1">
-          Gotówka, konta i oszczędności — zawsze pod ręką.
-        </p>
-      </div>
+          {/* Headline — compact */}
+          <div className="animate-card-in">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight text-white">
+              Twoje finanse<br />pod pełną kontrolą
+            </h1>
+            <p className="text-xs sm:text-sm text-neutral-400 mt-1.5">
+              Gotówka, konta i oszczędności — zawsze pod ręką.
+            </p>
+          </div>
 
-      {/* Animated App Preview Card — fixed height, compact */}
-      {panelMode === 'splash' && (
-        <div className="z-10 animate-card-in stagger-2 mb-4">
-          <div className="relative overflow-hidden rounded-2xl finte-card-elevated px-5 py-5 h-[148px] flex flex-col justify-between">
+          {/* Animated App Preview Card — fixed height, compact */}
+          {panelMode === 'splash' && (
+            <div className="animate-card-in stagger-2">
+              <div className="relative overflow-hidden rounded-2xl finte-card-elevated px-5 py-5 h-[148px] flex flex-col justify-between">
             <div className="absolute inset-y-0 w-20 bg-gradient-to-r from-transparent via-white/[0.06] to-transparent pointer-events-none animate-sheen" />
 
             {activeSlide === 'wallet' && (
@@ -230,9 +244,10 @@ export function LoginScreen({
           </div>
         </div>
       )}
+        </div>
 
-      {/* CTA / Forms — pushed to bottom, compact spacing */}
-      <div className="mt-auto space-y-2.5 z-10 animate-card-in stagger-3">
+      {/* CTA / Forms — compact spacing */}
+      <div className="pt-4 sm:pt-0 space-y-2.5 animate-card-in stagger-3">
         {error && (
           <div className="rounded-2xl bg-red-500/15 border border-red-500/30 px-4 py-2 text-xs font-medium text-red-300 text-center animate-fade-in">
             {error}
@@ -327,7 +342,7 @@ export function LoginScreen({
                 placeholder={panelMode === 'register' ? 'Login (np. konrad)' : 'Twój login'}
                 autoCapitalize="none"
                 autoCorrect="off"
-                className="w-full bg-transparent focus:outline-none text-white text-sm"
+                className="w-full bg-transparent focus:outline-none text-white text-base sm:text-sm"
               />
             </div>
 
@@ -339,7 +354,7 @@ export function LoginScreen({
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="Imię (opcjonalnie)"
-                  className="w-full bg-transparent focus:outline-none text-white text-sm"
+                  className="w-full bg-transparent focus:outline-none text-white text-base sm:text-sm"
                 />
               </div>
             )}
@@ -353,7 +368,7 @@ export function LoginScreen({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Hasło"
-                className="w-full bg-transparent focus:outline-none text-white text-sm"
+                className="w-full bg-transparent focus:outline-none text-white text-base sm:text-sm"
               />
               <button type="button" onClick={() => setShowPassword((p) => !p)} className="text-neutral-400 hover:text-white cursor-pointer">
                 {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -370,7 +385,7 @@ export function LoginScreen({
                     value={passwordConfirm}
                     onChange={(e) => setPasswordConfirm(e.target.value)}
                     placeholder="Powtórz hasło"
-                    className="w-full bg-transparent focus:outline-none text-white text-sm"
+                    className="w-full bg-transparent focus:outline-none text-white text-base sm:text-sm"
                   />
                 </div>
                 {bioEnv?.supported && (
@@ -409,6 +424,7 @@ export function LoginScreen({
             <span>Połączenie szyfrowane · Supabase</span>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

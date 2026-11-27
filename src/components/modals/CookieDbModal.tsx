@@ -214,7 +214,14 @@ export function CookieDbModal({
           </div>
 
           <div className="text-xs text-neutral-300 font-mono bg-white/[0.04] border border-white/[0.08] p-2.5 rounded-xl break-all">
-            bgmpcsnkntxxtjptufmv.supabase.co
+            {(() => {
+              try {
+                const raw = process.env.NEXT_PUBLIC_SUPABASE_URL;
+                return raw ? new URL(raw).host : 'Supabase Cloud';
+              } catch {
+                return 'Supabase Cloud';
+              }
+            })()}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
@@ -294,10 +301,20 @@ export function CookieDbModal({
               <span>Zużycie bezpiecznego limitu (12 KB)</span>
               <span className="tabular-nums font-semibold text-white">{storageStats.usagePercent}%</span>
             </div>
-            <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
+            <div
+              role="progressbar"
+              aria-valuenow={storageStats.usagePercent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              className="h-2 rounded-full bg-white/[0.08] overflow-hidden"
+            >
               <div
-                className="h-full rounded-full bg-white transition-all duration-300"
-                style={{ width: `${Math.max(3, storageStats.usagePercent)}%` }}
+                className={`h-full rounded-full transition-all duration-300 ${
+                  storageStats.usagePercent >= 85
+                    ? 'bg-amber-400'
+                    : 'bg-[#2dd4bf]'
+                }`}
+                style={{ width: `${Math.max(4, Math.min(100, storageStats.usagePercent))}%` }}
               />
             </div>
           </div>

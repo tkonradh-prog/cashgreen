@@ -182,7 +182,8 @@ export function getTargetForYear(
 
   if (metric === 'expense') return expLimit;
   if (metric === 'income') return incGoal;
-  return Math.max(100000, incGoal - expLimit);
+  if (incGoal === 0 && expLimit === 0) return 0;
+  return Math.max(0, incGoal - expLimit);
 }
 
 export function getAvailableYears(transactions: Transaction[], todayStr: string): number[] {

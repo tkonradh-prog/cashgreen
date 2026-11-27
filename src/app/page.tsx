@@ -11,7 +11,8 @@ import { fetchFinanceDBFromSupabase } from '@/lib/supabaseDb';
 import { SupabaseConfigInfo } from '@/lib/types';
 
 async function FinanceCookieLoader() {
-  // Removed deprecated connection call; Next.js 16 uses dynamic export instead
+  // Next.js 16 Cache Components: defer request-time date/cookies evaluation to request time
+  await connection();
   const cookieStore = await cookies();
   const currentUsername = cookieStore.get(AUTH_USER_COOKIE)?.value || '';
   const isAuthenticated =
@@ -23,13 +24,25 @@ async function FinanceCookieLoader() {
     value: c.value,
   }));
 
-  const existingCookieDb = parseFinanceDBFromCookies(rawPairs);
+  if (!isAuthenticated || !currentUsername) {
+    return (
+      <AppEntry
+        initialAuthenticated={false}
+        initialUsername=""
+        initialDb={createCleanDatabase(todayStr)}
+        todayStr={todayStr}
+        hadExistingCookies={false}
+      />
+    );
+  }
+
+  const existingCookieDb = parseFinanceDBFromCookies(rawPairs, currentUsername);
 
   // Initialize Supabase server client taking cookieStore
   const supabase = createClient(cookieStore);
-  const syncResult = await fetchFinanceDBFromSupabase(supabase);
+  const syncResult = await fetchFinanceDBFromSupabase(supabase, currentUsername);
 
-  // If Supabase returned database records, use them; otherwise use cookie DB or fallback
+  // Use this user's Supabase DB, or this user's cookie DB, or a clean 0 zł database
   const initialDb = syncResult.db ?? existingCookieDb ?? createCleanDatabase(todayStr);
 
   const supabaseInfo: SupabaseConfigInfo = {
@@ -58,8 +71,8 @@ async function FinanceCookieLoader() {
 
 function AppSkeleton() {
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-6">
-      <div className="w-full max-w-[420px] h-[420px] rounded-3xl bg-[#0e1015] border border-[#1c202a] animate-pulse" />
+    <div className="min-h-screen bg-transparent flex items-center justify-center p-6">
+      <div className="w-8 h-8 rounded-full border-2 border-white/15 border-t-white/70 animate-spin" />
     </div>
   );
 }

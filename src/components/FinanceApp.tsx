@@ -12,6 +12,7 @@ import {
   User,
   Wallet,
 } from 'lucide-react';
+import { clearFinanceDBCookies } from '@/lib/cookieDb';
 import { formatPLN } from '@/lib/format';
 import { Account, AppTab, Transaction } from '@/lib/types';
 import { useFinance } from './FinanceProvider';
@@ -41,7 +42,7 @@ const NAV_ITEMS: Array<{
 ];
 
 export function FinanceApp({
-  username = 'admin',
+  username = '',
   onLoggedOut,
 }: {
   username?: string;
@@ -85,19 +86,24 @@ export function FinanceApp({
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
+      clearFinanceDBCookies();
       await fetch('/api/auth', { method: 'DELETE' });
     } finally {
-      onLoggedOut?.();
-      router.refresh();
+      if (onLoggedOut) {
+        onLoggedOut();
+      } else {
+        router.refresh();
+      }
+      setLoggingOut(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-transparent text-white">
+    <div className="min-h-dvh flex flex-col md:flex-row bg-transparent text-white">
       {/* ===================================================================== */}
       {/* DESKTOP SIDEBAR (md+) — iOS Frosted Glass Sidebar                     */}
       {/* ===================================================================== */}
-      <aside className="hidden md:flex md:w-64 lg:w-70 shrink-0 flex-col justify-between border-r border-white/[0.08] bg-[#090c12]/60 backdrop-blur-2xl backdrop-saturate-180 sticky top-0 h-screen p-5 shadow-[inset_-1px_0_0_rgba(255,255,255,0.04)]">
+      <aside className="hidden md:flex md:w-60 xl:w-68 shrink-0 flex-col justify-between border-r border-white/[0.08] bg-[#090c12]/60 backdrop-blur-2xl backdrop-saturate-180 sticky top-0 h-screen p-4 xl:p-5 shadow-[inset_-1px_0_0_rgba(255,255,255,0.04)]">
         <div className="space-y-6">
           {/* Brand header */}
           <button
@@ -126,7 +132,7 @@ export function FinanceApp({
             <div className="text-2xl font-extrabold tabular-nums tracking-tight text-white">
               <AnimatedPLN valueGrosze={accountsSummary.liquidTotalGrosze} />
             </div>
-            <div className="flex items-center justify-between text-[11px] text-neutral-400 pt-1.5 border-t border-white/[0.08] tabular-nums font-medium gap-1.5">
+            <div className="flex flex-wrap items-center justify-between text-[11px] text-neutral-400 pt-1.5 border-t border-white/[0.08] tabular-nums font-medium gap-x-2 gap-y-0.5">
               <span className="whitespace-nowrap">Gotówka: <strong className="text-white font-bold">{formatPLN(accountsSummary.cashTotalGrosze)}</strong></span>
               <span className="whitespace-nowrap">Konta: <strong className="text-white font-bold">{formatPLN(accountsSummary.bankTotalGrosze)}</strong></span>
             </div>
@@ -228,7 +234,7 @@ export function FinanceApp({
       {/* ===================================================================== */}
       {/* MOBILE SMARTPHONE TOP BAR (< md) — iOS Translucent Frosted Bar        */}
       {/* ===================================================================== */}
-      <header className="md:hidden sticky top-0 z-30 border-b border-white/[0.09] bg-[#07090e]/65 backdrop-blur-2xl backdrop-saturate-200 shadow-[inset_0_-1px_0_rgba(255,255,255,0.04)]">
+      <header className="md:hidden sticky top-0 z-30 border-b border-white/[0.09] bg-[#07090e]/65 backdrop-blur-2xl backdrop-saturate-200 shadow-[inset_0_-1px_0_rgba(255,255,255,0.04)] pt-safe">
         <div className="px-4 h-14 flex items-center justify-between gap-2">
           <button
             type="button"

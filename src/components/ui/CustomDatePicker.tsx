@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import {
@@ -26,18 +26,44 @@ export function CustomDatePicker({
   className = '',
 }: CustomDatePickerProps) {
   const [open, setOpen] = useState(false);
-  const [openUpward, setOpenUpward] = useState(false);
+  const [desktopPos, setDesktopPos] = useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+  }>({ left: 0 });
   const [viewYm, setViewYm] = useState(() => value.slice(0, 7));
   const rootRef = useRef<HTMLDivElement>(null);
+  const desktopSheetRef = useRef<HTMLDivElement>(null);
   const mobileSheetRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
+  const updateDesktopPos = useCallback(() => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect || typeof window === 'undefined') return;
+    const popoverWidth = 304;
+    const left = Math.max(12, Math.min(rect.left, window.innerWidth - popoverWidth - 12));
+    const openUpward = rect.bottom + 340 > window.innerHeight && rect.top > 340;
+    if (openUpward) {
+      setDesktopPos({
+        left,
+        bottom: window.innerHeight - rect.top + 6,
+      });
+    } else {
+      setDesktopPos({
+        left,
+        top: rect.bottom + 6,
+      });
+    }
+  }, []);
+
   useEffect(() => {
     if (!open) return;
+    updateDesktopPos();
     const onOutside = (e: MouseEvent | TouchEvent) => {
       const target = e.target as Node;
       if (
         !rootRef.current?.contains(target) &&
+        !desktopSheetRef.current?.contains(target) &&
         !mobileSheetRef.current?.contains(target)
       ) {
         setOpen(false);
@@ -46,15 +72,20 @@ export function CustomDatePicker({
     const onEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false);
     };
+    const onReposition = () => updateDesktopPos();
     document.addEventListener('mousedown', onOutside);
     document.addEventListener('touchstart', onOutside);
     document.addEventListener('keydown', onEsc);
+    window.addEventListener('resize', onReposition);
+    window.addEventListener('scroll', onReposition, true);
     return () => {
       document.removeEventListener('mousedown', onOutside);
       document.removeEventListener('touchstart', onOutside);
       document.removeEventListener('keydown', onEsc);
+      window.removeEventListener('resize', onReposition);
+      window.removeEventListener('scroll', onReposition, true);
     };
-  }, [open]);
+  }, [open, updateDesktopPos]);
 
   const yesterdayStr = useMemo(() => addDays(todayStr, -1), [todayStr]);
   const twoDaysAgoStr = useMemo(() => addDays(todayStr, -2), [todayStr]);
@@ -159,8 +190,7 @@ export function CustomDatePicker({
             setOpen((o) => {
               if (!o) {
                 setViewYm(value.slice(0, 7));
-                const rect = triggerRef.current?.getBoundingClientRect();
-                setOpenUpward(Boolean(rect && rect.bottom + 320 > window.innerHeight));
+                updateDesktopPos();
               }
               return !o;
             })
@@ -209,45 +239,55 @@ export function CustomDatePicker({
         </div>
       </div>
 
-      {open && (
+      {open && typeof document !== 'undefined' && (
         <>
-          <div
-            className={`hidden sm:block absolute left-0 z-50 w-76 rounded-2xl ios-glass-sheet animate-fade-in ${
-              openUpward ? 'bottom-[calc(100%+6px)]' : 'top-[calc(100%+6px)]'
-            }`}
-          >
-            {renderCalendar()}
-          </div>
+          {createPortal(
+            <div
+              ref={desktopSheetRef}
+              style={{
+                left: `${desktopPos.left}px`,
+                top: desktopPos.top !== undefined ? `${desktopPos.top}px` : undefined,
+                bottom: desktopPos.bottom !== undefined ? `${desktopPos.bottom}px` : undefined,
+              }}
+              className="hidden sm:block fixed z-[80] w-76 rounded-2xl ios-glass-sheet animate-fade-in"
+            >
+              {renderCalendar()}
+            </div>,
+            document.body
+          )}
 
-          {typeof document !== 'undefined' &&
-            createPortal(
+          {createPortal(
+            <div
+              onClick={() => setOpen(false)}
+              className="sm:hidden fixed inset-0 z-[80] flex items-end justify-center bg-black/80 backdrop-blur-md animate-backdrop-in"
+            >
               <div
-                onClick={() => setOpen(false)}
-                className="sm:hidden fixed inset-0 z-[60] flex items-end justify-center bg-black/75 backdrop-blur-md animate-backdrop-in"
+                ref={mobileSheetRef}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full rounded-t-3xl ios-glass-sheet pb-safe animate-sheet-in"
               >
-                <div
-                  ref={mobileSheetRef}
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-full rounded-t-3xl ios-glass-sheet pb-safe animate-sheet-in"
-                >
-                  <div className="flex justify-center pt-2.5 pb-1">
-                    <div className="w-10 h-1 rounded-full bg-white/25" />
-                  </div>
-                  <div className="flex items-center justify-between px-5 pt-2 pb-2.5 border-b border-white/[0.09]">
-                    <span className="text-sm font-semibold text-white">{label}</span>
-                    <button
-                      type="button"
-                      onClick={() => setOpen(false)}
-                      className="p-1.5 rounded-full ios-glass-pill text-neutral-300 hover:text-white"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                  {renderCalendar()}
+                <div className="flex justify-center pt-2.5 pb-1">
+                  <div className="w-10 h-1 rounded-full bg-white/25" />
                 </div>
-              </div>,
-              document.body
-            )}
+                <div className="flex items-center justify-between px-5 pt-2 pb-2.5 border-b border-white/[0.09]">
+                  <span className="text-sm font-semibold text-white">{label}</span>
+                  <button
+                    type="button"
+                    aria-label="Zamknij kalendarz"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpen(false);
+                    }}
+                    className="p-2 rounded-full ios-glass-pill text-neutral-300 hover:text-white active:scale-90 transition-all cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                {renderCalendar()}
+              </div>
+            </div>,
+            document.body
+          )}
         </>
       )}
     </div>
