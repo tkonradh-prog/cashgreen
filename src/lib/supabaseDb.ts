@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { getSupabaseEnv } from '@/utils/supabase/config';
 import { normalizeLogin } from './auth';
 import { FinanceDB } from './types';
 
@@ -22,8 +23,19 @@ export function getFinanceSyncRowId(username?: string): string | null {
  */
 export async function fetchFinanceDBFromSupabase(
   supabase: SupabaseClient,
-  username?: string
+  username?: string,
+  isConfiguredOverride?: boolean
 ): Promise<SupabaseSyncResult> {
+  if (!(isConfiguredOverride ?? getSupabaseEnv().isConfigured)) {
+    return {
+      db: null,
+      source: 'cookies',
+      isConfigured: false,
+      tablesReady: false,
+      error: 'Brak zmiennych środowiskowych Supabase (NEXT_PUBLIC_SUPABASE_URL / KEY).',
+    };
+  }
+
   const rowId = getFinanceSyncRowId(username);
   if (!rowId) {
     return {
@@ -90,8 +102,17 @@ export async function fetchFinanceDBFromSupabase(
 export async function saveFinanceDBToSupabase(
   supabase: SupabaseClient,
   db: FinanceDB,
-  username?: string
-): Promise<{ ok: boolean; error?: string; tablesMissing?: boolean }> {
+  username?: string,
+  isConfiguredOverride?: boolean
+): Promise<{ ok: boolean; error?: string; tablesMissing?: boolean; notConfigured?: boolean }> {
+  if (!(isConfiguredOverride ?? getSupabaseEnv().isConfigured)) {
+    return {
+      ok: false,
+      notConfigured: true,
+      error: 'Brak konfiguracji Supabase w zmiennych środowiskowych.',
+    };
+  }
+
   const rowId = getFinanceSyncRowId(username);
   if (!rowId) {
     return { ok: false, error: 'Brak zalogowanego użytkownika' };
@@ -135,12 +156,21 @@ export async function saveFinanceDBToSupabase(
  * Check if Supabase connection is healthy and if tables exist.
  */
 export async function checkSupabaseConnection(
-  supabase: SupabaseClient
-): Promise<{ ok: boolean; tablesReady: boolean; error?: string }> {
+  supabase: SupabaseClient,
+  isConfiguredOverride?: boolean
+): Promise<{ ok: boolean; tablesReady: boolean; isConfigured: boolean; error?: string }> {
+  if (!(isConfiguredOverride ?? getSupabaseEnv().isConfigured)) {
+    return {
+      ok: false,
+      tablesReady: false,
+      isConfigured: false,
+      error: 'Brak zmiennych środowiskowych Supabase.',
+    };
+  }
   try {
     const { error } = await supabase.from('finance_sync').select('id').limit(1);
     if (!error) {
-      return { ok: true, tablesReady: true };
+      return { ok: true, tablesReady: true, isConfigured: true };
     }
     const isMissing =
       error.code === 'PGRST205' ||
@@ -150,12 +180,14 @@ export async function checkSupabaseConnection(
     return {
       ok: true,
       tablesReady: !isMissing,
+      isConfigured: true,
       error: error.message,
     };
   } catch (err) {
     return {
       ok: false,
       tablesReady: false,
+      isConfigured: true,
       error: err instanceof Error ? err.message : 'Brak połączenia',
     };
   }

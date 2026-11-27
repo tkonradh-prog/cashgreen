@@ -14,6 +14,7 @@ export function AppEntry({
   todayStr,
   hadExistingCookies,
   supabaseInitialConfig,
+  supabasePublicEnv,
 }: {
   initialAuthenticated: boolean;
   initialUsername?: string;
@@ -21,6 +22,7 @@ export function AppEntry({
   todayStr: string;
   hadExistingCookies: boolean;
   supabaseInitialConfig?: SupabaseConfigInfo;
+  supabasePublicEnv?: { url: string; key: string };
 }) {
   const [authenticated, setAuthenticated] = useState(initialAuthenticated);
   const [username, setUsername] = useState(initialUsername);
@@ -49,6 +51,7 @@ export function AppEntry({
         todayStr={todayStr}
         hadExistingCookies={hadExistingCookies}
         supabaseInitialConfig={supabaseInitialConfig}
+        supabasePublicEnv={supabasePublicEnv}
       >
         <FinanceApp
           username={username}

@@ -1,10 +1,13 @@
 import { createBrowserClient } from '@supabase/ssr';
+import { getSupabaseEnv } from './config';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-export const createClient = () =>
-  createBrowserClient(
-    supabaseUrl!,
-    supabaseKey!
-  );
+export const createClient = (overrideUrl?: string, overrideKey?: string) => {
+  const { url, key, isConfigured } = getSupabaseEnv(overrideUrl, overrideKey);
+  if (!isConfigured) {
+    return createBrowserClient(
+      'https://placeholder.supabase.co',
+      'placeholder-key'
+    );
+  }
+  return createBrowserClient(url, key);
+};

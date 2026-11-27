@@ -7,6 +7,7 @@ import { parseFinanceDBFromCookies } from '@/lib/cookieDb';
 import { getWarsawToday } from '@/lib/format';
 import { createCleanDatabase } from '@/lib/seedData';
 import { createClient } from '@/utils/supabase/server';
+import { getSupabaseEnv } from '@/utils/supabase/config';
 import { fetchFinanceDBFromSupabase } from '@/lib/supabaseDb';
 import { SupabaseConfigInfo } from '@/lib/types';
 
@@ -18,6 +19,10 @@ async function FinanceCookieLoader() {
   const isAuthenticated =
     cookieStore.get(AUTH_COOKIE_NAME)?.value === AUTH_SESSION_VALUE && Boolean(currentUsername);
   const todayStr = getWarsawToday();
+  const supabaseEnv = getSupabaseEnv();
+  const supabasePublicEnv = supabaseEnv.isConfigured
+    ? { url: supabaseEnv.url, key: supabaseEnv.key }
+    : undefined;
 
   const rawPairs = cookieStore.getAll().map((c) => ({
     name: c.name,
@@ -32,6 +37,7 @@ async function FinanceCookieLoader() {
         initialDb={createCleanDatabase(todayStr)}
         todayStr={todayStr}
         hadExistingCookies={false}
+        supabasePublicEnv={supabasePublicEnv}
       />
     );
   }
@@ -65,6 +71,7 @@ async function FinanceCookieLoader() {
       todayStr={todayStr}
       hadExistingCookies={Boolean(existingCookieDb || syncResult.db)}
       supabaseInitialConfig={supabaseInfo}
+      supabasePublicEnv={supabasePublicEnv}
     />
   );
 }

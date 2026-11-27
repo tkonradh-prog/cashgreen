@@ -70,6 +70,7 @@ export function FinanceProvider({
   todayStr,
   hadExistingCookies,
   supabaseInitialConfig,
+  supabasePublicEnv,
   children,
 }: {
   username: string;
@@ -78,6 +79,7 @@ export function FinanceProvider({
   todayStr: string;
   hadExistingCookies: boolean;
   supabaseInitialConfig?: SupabaseConfigInfo;
+  supabasePublicEnv?: { url: string; key: string };
   children: React.ReactNode;
 }) {
   const normalizedUser = normalizeLogin(username);
@@ -110,7 +112,11 @@ export function FinanceProvider({
         }
   );
 
-  const supabase = useMemo(() => createClient(), []);
+  const hasServerSupabaseEnv = Boolean(supabasePublicEnv?.url && supabasePublicEnv?.key);
+  const supabase = useMemo(
+    () => createClient(supabasePublicEnv?.url, supabasePublicEnv?.key),
+    [supabasePublicEnv?.url, supabasePublicEnv?.key]
+  );
 
   // Load this user's own data from Supabase (or seed their fresh 0 zl DB if new user)
   useEffect(() => {
@@ -121,7 +127,11 @@ export function FinanceProvider({
 
       // If client just logged in / registered, fetch user-specific data from Supabase
       if (!serverMatched) {
-        const res = await fetchFinanceDBFromSupabase(supabase, normalizedUser);
+        const res = await fetchFinanceDBFromSupabase(
+          supabase,
+          normalizedUser,
+          hasServerSupabaseEnv || undefined
+        );
         if (!isMounted) return;
 
         if (res.db) {
@@ -138,38 +148,54 @@ export function FinanceProvider({
           setDb(cleanDb);
           setStorageStats(saveFinanceDBToCookies(cleanDb, normalizedUser));
           if (res.tablesReady) {
-            await saveFinanceDBToSupabase(supabase, cleanDb, normalizedUser);
+            await saveFinanceDBToSupabase(
+              supabase,
+              cleanDb,
+              normalizedUser,
+              hasServerSupabaseEnv || undefined
+            );
           }
         }
 
         if (!isMounted) return;
         setSupabaseConfig({
-          isConfigured: true,
+          isConfigured: res.isConfigured,
           tablesReady: res.tablesReady,
-          source: res.db ? 'supabase' : 'default',
-          status: res.tablesReady ? 'connected' : 'needs_migration',
+          source: res.db ? 'supabase' : res.isConfigured ? 'default' : 'cookies',
+          status: !res.isConfigured
+            ? 'offline_cookies'
+            : res.tablesReady
+              ? 'connected'
+              : 'needs_migration',
           error: res.error,
         });
         return;
       }
 
       // Server already loaded for this exact user: confirm connection & initialize row if empty
-      const conn = await checkSupabaseConnection(supabase);
+      const conn = await checkSupabaseConnection(supabase, hasServerSupabaseEnv || undefined);
       if (!isMounted) return;
-      if (conn.tablesReady && supabaseInitialConfig?.source !== 'supabase') {
-        await saveFinanceDBToSupabase(supabase, startingDb, normalizedUser);
+      if (conn.isConfigured && conn.tablesReady && supabaseInitialConfig?.source !== 'supabase') {
+        await saveFinanceDBToSupabase(
+          supabase,
+          startingDb,
+          normalizedUser,
+          hasServerSupabaseEnv || undefined
+        );
       }
       if (!isMounted) return;
       setSupabaseConfig((prev) => ({
         ...prev,
-        isConfigured: true,
+        isConfigured: conn.isConfigured,
         tablesReady: conn.tablesReady,
         source: conn.tablesReady ? 'supabase' : prev.source,
-        status: conn.tablesReady
-          ? 'connected'
-          : conn.ok
-            ? 'needs_migration'
-            : 'error',
+        status: !conn.isConfigured
+          ? 'offline_cookies'
+          : conn.tablesReady
+            ? 'connected'
+            : conn.ok
+              ? 'needs_migration'
+              : 'error',
         error: conn.error,
       }));
     };
@@ -178,7 +204,7 @@ export function FinanceProvider({
     return () => {
       isMounted = false;
     };
-  }, [supabase, normalizedUser, serverMatched, startingDb, supabaseInitialConfig?.source, todayStr]);
+  }, [supabase, normalizedUser, serverMatched, startingDb, supabaseInitialConfig?.source, todayStr, hasServerSupabaseEnv]);
 
   // Persist user-scoped cookies on mount when needed
   useEffect(() => {
@@ -190,15 +216,31 @@ export function FinanceProvider({
   const pushToSupabase = useCallback(
     async (targetDb: FinanceDB): Promise<boolean> => {
       try {
-        const res = await saveFinanceDBToSupabase(supabase, targetDb, normalizedUser);
+        const res = await saveFinanceDBToSupabase(
+          supabase,
+          targetDb,
+          normalizedUser,
+          hasServerSupabaseEnv || undefined
+        );
         if (res.ok) {
           setSupabaseConfig((c) => ({
             ...c,
+            isConfigured: true,
             tablesReady: true,
             status: 'connected',
             error: undefined,
           }));
           return true;
+        }
+        if (res.notConfigured) {
+          setSupabaseConfig((c) => ({
+            ...c,
+            isConfigured: false,
+            tablesReady: false,
+            status: 'offline_cookies',
+            error: res.error,
+          }));
+          return false;
         }
         if (res.tablesMissing) {
           setSupabaseConfig((c) => ({
@@ -224,7 +266,7 @@ export function FinanceProvider({
         return false;
       }
     },
-    [supabase, normalizedUser]
+    [supabase, normalizedUser, hasServerSupabaseEnv]
   );
 
   const commitDb = useCallback(
@@ -445,7 +487,11 @@ export function FinanceProvider({
   const syncWithSupabase = useCallback(async () => {
     setSupabaseConfig((prev) => ({ ...prev, status: 'syncing' }));
     try {
-      const res = await fetchFinanceDBFromSupabase(supabase, normalizedUser);
+      const res = await fetchFinanceDBFromSupabase(
+        supabase,
+        normalizedUser,
+        hasServerSupabaseEnv || undefined
+      );
       if (res.db) {
         commitDb(() => res.db!, false);
         setSupabaseConfig({
@@ -467,7 +513,7 @@ export function FinanceProvider({
       setSupabaseConfig((prev) => ({ ...prev, status: 'error' }));
       return false;
     }
-  }, [commitDb, supabase, normalizedUser]);
+  }, [commitDb, supabase, normalizedUser, hasServerSupabaseEnv]);
 
   const exportToSupabase = useCallback(async () => {
     setSupabaseConfig((prev) => ({ ...prev, status: 'syncing' }));

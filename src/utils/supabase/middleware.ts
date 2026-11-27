@@ -1,8 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+import { getSupabaseEnv } from './config';
 
 export const updateSession = async (request: NextRequest) => {
   let supabaseResponse = NextResponse.next({
@@ -11,9 +9,14 @@ export const updateSession = async (request: NextRequest) => {
     },
   });
 
+  const { url, key, isConfigured } = getSupabaseEnv();
+  if (!isConfigured) {
+    return supabaseResponse;
+  }
+
   const supabase = createServerClient(
-    supabaseUrl!,
-    supabaseKey!,
+    url,
+    key,
     {
       cookies: {
         getAll() {
@@ -32,8 +35,12 @@ export const updateSession = async (request: NextRequest) => {
     }
   );
 
-  // Refresh auth token if necessary
-  await supabase.auth.getUser();
+  try {
+    // Refresh auth token if necessary
+    await supabase.auth.getUser();
+  } catch {
+    // Do not fail the request if Supabase auth refresh is unreachable
+  }
 
   return supabaseResponse;
 };
@@ -45,9 +52,24 @@ export const createClient = (request: NextRequest) => {
     },
   });
 
+  const { url, key, isConfigured } = getSupabaseEnv();
+  if (!isConfigured) {
+    const supabase = createServerClient(
+      'https://placeholder.supabase.co',
+      'placeholder-key',
+      {
+        cookies: {
+          getAll() { return []; },
+          setAll() {},
+        },
+      }
+    );
+    return { supabase, response: supabaseResponse };
+  }
+
   const supabase = createServerClient(
-    supabaseUrl!,
-    supabaseKey!,
+    url,
+    key,
     {
       cookies: {
         getAll() {
