@@ -1,26 +1,402 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-canvas: #030407;
+  --bg-surface: rgba(18, 22, 32, 0.56);
+  --bg-elevated: rgba(28, 34, 48, 0.65);
+  --bg-inset: rgba(255, 255, 255, 0.04);
+  --border-subtle: rgba(255, 255, 255, 0.11);
+  --border-strong: rgba(255, 255, 255, 0.2);
+
+  /* iOS ProMotion Spring Physics Curves */
+  --ios-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --ios-spring-bounce: cubic-bezier(0.32, 1.28, 0.56, 1);
+
+  /* iOS Dark Liquid Glass & Revolut neutral fintech palette */
+  --accent-primary: #ffffff;
+  --accent-primary-hover: #e5e5e5;
+  --accent-primary-ink: #000000;
+
+  --accent-blue: #3b82f6;
+  --accent-blue-hover: #60a5fa;
+  --accent-gold: #d4af37;
+  --accent-coral: #ef4444;
+  --accent-coral-muted: #f87171;
+  --accent-teal: #2dd4bf;
+  --accent-slate: #94a3b8;
+
+  --text-primary: #ffffff;
+  --text-secondary: #a1a9b8;
+  --text-muted: #6e7787;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--bg-canvas);
+  --color-foreground: var(--text-primary);
+  --font-sans: var(--font-jakarta);
+  --font-mono: var(--font-jetbrains);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+html,
+body {
+  background-color: #030407;
+  color: #ffffff;
+  color-scheme: dark;
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: contain;
+}
+
+/* Smooth touch momentum scrolling everywhere */
+.overflow-x-auto,
+.overflow-y-auto {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+/* Soft atmospheric light fields behind frosted iOS glass layers */
+body {
+  font-family: var(--font-jakarta), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: #030407;
+  background-image:
+    radial-gradient(ellipse 85% 50% at 15% -8%, rgba(56, 189, 248, 0.13), transparent 58%),
+    radial-gradient(ellipse 75% 48% at 88% 6%, rgba(45, 212, 191, 0.11), transparent 55%),
+    radial-gradient(ellipse 65% 45% at 50% 42%, rgba(99, 102, 241, 0.075), transparent 62%),
+    radial-gradient(ellipse 75% 45% at 25% 96%, rgba(212, 175, 55, 0.065), transparent 58%),
+    radial-gradient(ellipse 90% 40% at 50% 0%, rgba(255, 255, 255, 0.05), transparent 52%);
+  background-attachment: fixed;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ========================================================================= */
+/* iOS LIQUID / FROSTED GLASS SURFACES                                       */
+/* ========================================================================= */
+
+.finte-card {
+  background: linear-gradient(
+    148deg,
+    rgba(255, 255, 255, 0.078) 0%,
+    rgba(20, 24, 35, 0.56) 44%,
+    rgba(11, 14, 21, 0.64) 100%
+  );
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.115);
+  border-radius: 1.5rem;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 0 rgba(255, 255, 255, 0.025),
+    0 20px 44px -12px rgba(0, 0, 0, 0.65);
+}
+
+.finte-card-elevated {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.115) 0%,
+    rgba(28, 34, 48, 0.62) 55%,
+    rgba(14, 18, 27, 0.72) 100%
+  );
+  backdrop-filter: blur(32px) saturate(190%);
+  -webkit-backdrop-filter: blur(32px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.17);
+  border-radius: 1.35rem;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.24),
+    0 22px 50px -10px rgba(0, 0, 0, 0.72);
+}
+
+.ios-glass-inset {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.058) 0%,
+    rgba(255, 255, 255, 0.025) 100%
+  );
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.09);
+}
+
+.ios-glass-sheet {
+  background: linear-gradient(
+    165deg,
+    rgba(22, 26, 36, 0.96) 0%,
+    rgba(11, 13, 20, 0.985) 100%
+  );
+  backdrop-filter: blur(44px) saturate(185%);
+  -webkit-backdrop-filter: blur(44px) saturate(185%);
+  border: 1px solid rgba(255, 255, 255, 0.17);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.22),
+    0 28px 70px rgba(0, 0, 0, 0.9);
+}
+
+.ios-glass-pill {
+  background: rgba(255, 255, 255, 0.068);
+  backdrop-filter: blur(16px) saturate(175%);
+  -webkit-backdrop-filter: blur(16px) saturate(175%);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+}
+
+.ios-glass-pill:hover {
+  background: rgba(255, 255, 255, 0.125);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+/* Hide scrollbars cleanly for mobile horizontal carousels */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Custom slim dark scrollbars for desktop tables & lists */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* Safe area bottom padding for floating mobile dock */
+.pb-safe {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+/* ========================================================================= */
+/* iOS SPRING ANIMATIONS & TRANSITIONS                                       */
+/* ========================================================================= */
+
+@keyframes backdropIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes backdropOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.animate-backdrop-in {
+  animation: backdropIn 0.28s var(--ios-spring) both;
+}
+
+.animate-backdrop-out {
+  animation: backdropOut 0.22s var(--ios-spring) both;
+}
+
+@keyframes slideUpSheet {
+  from {
+    opacity: 0;
+    transform: translateY(32px) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes slideDownSheet {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(28px) scale(0.975);
+  }
+}
+
+.animate-sheet-in {
+  animation: slideUpSheet 0.36s var(--ios-spring-bounce) both;
+  will-change: transform, opacity;
+}
+
+.animate-sheet-out {
+  animation: slideDownSheet 0.22s var(--ios-spring) both;
+  will-change: transform, opacity;
+}
+
+@keyframes viewEnter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.988);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0px);
+  }
+}
+
+.animate-view-enter {
+  animation: viewEnter 0.42s var(--ios-spring) both;
+  will-change: transform, opacity, filter;
+}
+
+@keyframes cardCascade {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-card-in {
+  animation: cardCascade 0.46s var(--ios-spring) both;
+  will-change: transform, opacity;
+}
+
+.stagger-1 { animation-delay: 45ms; }
+.stagger-2 { animation-delay: 95ms; }
+.stagger-3 { animation-delay: 145ms; }
+.stagger-4 { animation-delay: 195ms; }
+.stagger-5 { animation-delay: 245ms; }
+
+@keyframes fadeInFast {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeInFast 0.24s var(--ios-spring) both;
+}
+
+/* Smooth CSS Grid Accordion (height 0 -> auto) */
+.ios-accordion {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 0.34s var(--ios-spring),
+    opacity 0.26s var(--ios-spring);
+}
+
+.ios-accordion[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.ios-accordion-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Spring transition utility for sliding iOS pills */
+.ios-spring-glide {
+  transition:
+    transform 0.36s var(--ios-spring-bounce),
+    width 0.36s var(--ios-spring-bounce),
+    opacity 0.2s ease;
+  will-change: transform, width;
+}
+
+@keyframes barGrowY {
+  from {
+    transform: scaleY(0.05);
+    opacity: 0.35;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.animate-bar-grow {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: barGrowY 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes barGrowDiverging {
+  from {
+    transform: scaleY(0.1);
+    opacity: 0.35;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.animate-bar-diverging {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: barGrowDiverging 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes cardSheen {
+  0% {
+    transform: translateX(-140%) skewX(-18deg);
+  }
+  45%, 100% {
+    transform: translateX(240%) skewX(-18deg);
+  }
+}
+
+.animate-sheen {
+  animation: cardSheen 6.5s ease-in-out infinite;
+}
+
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-float-slow {
+  animation: floatSlow 5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-view-enter,
+  .animate-card-in,
+  .animate-sheet-in,
+  .animate-backdrop-in,
+  .animate-fade-in,
+  .animate-bar-grow,
+  .animate-bar-diverging,
+  .animate-sheen,
+  .animate-float-slow {
+    animation: none !important;
+  }
 }
